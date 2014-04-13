@@ -45,8 +45,6 @@
 		ar rvs ./LIB/lib.a ./OBJ/CMOS.O ./OBJ/GDT.O ./OBJ/IDT.O ./OBJ/IRQ.O ./OBJ/KEYBOARD.O
 		ar rvs ./LIB/lib.a ./OBJ/TIMER.O ./OBJ/MATH.O ./OBJ/STDIO.O ./OBJ/STRING.O ./OBJ/DMA.O
 		ar rvs ./LIB/lib.a ./OBJ/FDC.O
-		@ECHO MEM/MEM.ASM
-		nasm -f aout ./LIBSRC/MEM/MEM.ASM -o ./OBJ/MEM.O
 		@ECHO MEM/PHYSICAL.C
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/PHYSICAL.O ./LIBSRC/MEM/PHYSICAL.c
 		@ECHO MEM/VIRTUAL.C
@@ -58,8 +56,7 @@
 		@ECHO MEM/PAGEFAULT.C
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/PAGEFAULT.O ./LIBSRC/MEM/PAGEFAULT.c
 		@ECHO libMEM.a
-		ar rvs ./LIB/libMEM.a ./OBJ/PHYSICAL.O ./OBJ/VIRTUAL.O ./OBJ/PAGETABLE.O ./OBJ/PAGEDIR.O
-		ar rvs ./LIB/libMEM.a ./OBJ/PAGEFAULT.O ./OBJ/MEM.O
+		ar rvs ./LIB/libMEM.a ./OBJ/PHYSICAL.O ./OBJ/VIRTUAL.O ./OBJ/PAGETABLE.O ./OBJ/PAGEDIR.O ./OBJ/PAGEFAULT.O
 	)
 	IF /I '%INPUT%'=='2' (
 		@ECHO START.ASM
@@ -104,8 +101,6 @@
 		ar rvs ./LIB/lib.a ./OBJ/CMOS.O ./OBJ/GDT.O ./OBJ/IDT.O ./OBJ/IRQ.O ./OBJ/KEYBOARD.O
 		ar rvs ./LIB/lib.a ./OBJ/TIMER.O ./OBJ/MATH.O ./OBJ/STDIO.O ./OBJ/STRING.O ./OBJ/DMA.O
 		ar rvs ./LIB/lib.a ./OBJ/FDC.O
-		@ECHO MEM/MEM.ASM
-		nasm -f aout ./LIBSRC/MEM/MEM.ASM -o ./OBJ/MEM.O
 		@ECHO MEM/PHYSICAL.C
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/PHYSICAL.O ./LIBSRC/MEM/PHYSICAL.c
 		@ECHO MEM/VIRTUAL.C
@@ -117,8 +112,7 @@
 		@ECHO MEM/PAGEFAULT.C
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/PAGEFAULT.O ./LIBSRC/MEM/PAGEFAULT.c
 		@ECHO libMEM.a
-		ar rvs ./LIB/libMEM.a ./OBJ/PHYSICAL.O ./OBJ/VIRTUAL.O ./OBJ/PAGETABLE.O ./OBJ/PAGEDIR.O
-		ar rvs ./LIB/libMEM.a ./OBJ/PAGEFAULT.O ./OBJ/MEM.O
+		ar rvs ./LIB/libMEM.a ./OBJ/PHYSICAL.O ./OBJ/VIRTUAL.O ./OBJ/PAGETABLE.O ./OBJ/PAGEDIR.O ./OBJ/PAGEFAULT.O
 		@ECHO START.ASM
 		nasm -f aout ./SRC/START.ASM -o ./OBJ/START.O
 		@ECHO MAIN.C
