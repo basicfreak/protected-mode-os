@@ -9,7 +9,7 @@ IRQ 14
 
 void pageFault_handler(struct regs *r)
 {
-	
+	for(;;);
 }
 
 void init_pageFault()

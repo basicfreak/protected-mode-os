@@ -13,6 +13,8 @@
 #include <KEYBOARD.H>
 #include <FDC.H>
 #include <MEM/PHYSICAL.H>
+#include <MEM/VIRTUAL.H>
+#include <MEM/PAGEFAULT.H>
 #include "COMMAND.H"
 
 int main()
@@ -25,6 +27,9 @@ int main()
 	readCMOS		();
 	install_keyboard();
     timer_install	();
+	initPHYSMEM();
+	init_pageFault();
+	vmmngr_initialize ();
 	__asm__ __volatile__ ("sti");					//DON'T FROGET TO RE-ENABLE INTS OR NOTHING WILL WORK RIGHT!!!!
 	floppy_install	();
 	
@@ -38,7 +43,6 @@ int main()
 	printf ("\n\t\t85/1024=%i", divtest);
 	divtest = 2000 / 1024;
 	printf ("\t\t2000/1024=%i\n", divtest);
-	initPHYSMEM();
 /*initMEM();
 BPB_init();
 FAT_init();	

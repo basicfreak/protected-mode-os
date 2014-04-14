@@ -29,5 +29,18 @@
 		pd_entry m_entries[PAGES_PER_DIR];
 	};
 	
+	void MmMapPage (void* phys, void* virt);
+	void vmmngr_initialize ();
+	bool vmmngr_alloc_page (pt_entry* e);
+	void vmmngr_free_page (pt_entry* e);
+	bool vmmngr_switch_pdirectory (struct pdirectory* dir);
+	struct pdirectory* vmmngr_get_directory ();
+	void vmmngr_flush_tlb_entry (virtual_addr addr);
+	void vmmngr_ptable_clear (struct ptable* p);
+	uint32_t vmmngr_ptable_virt_to_index (virtual_addr addr);
+	pt_entry* vmmngr_ptable_lookup_entry (struct ptable* p,virtual_addr addr);
+	uint32_t vmmngr_pdirectory_virt_to_index (virtual_addr addr);
+	void vmmngr_pdirectory_clear (struct pdirectory* dir);
+	pd_entry* vmmngr_pdirectory_lookup_entry (struct pdirectory* p, virtual_addr addr);
 		
 #endif

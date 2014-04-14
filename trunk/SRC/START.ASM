@@ -86,11 +86,13 @@ mboot:
 [global 	_irq15]
 
 ;
+;	MEMORY FUNCTIONS
 ;
  
 [global _enable_paging]
 [global _disable_paging]
 [global _pmmngr_get_PDBR]
+[global _pmmngr_get_CR0]
 
 
 _enable_paging:
@@ -107,6 +109,10 @@ ret
 
 _pmmngr_get_PDBR:
 	mov eax, cr3
+ret
+
+_pmmngr_get_CR0:
+	mov eax, cr0
 ret
 
 ;

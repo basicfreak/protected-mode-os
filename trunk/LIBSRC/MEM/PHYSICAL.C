@@ -6,10 +6,9 @@
 #include <IRQ.H>			//for iError();
 #include <STDIO.H>
 
-//IN MEM.ASM:
+//IN START.ASM:
 extern void enable_paging(void);
 extern void disable_paging(void);
-extern physical_addr pmmngr_get_PDBR(void);
 
 //Private FUNCTIONS
 uint32_t probeRAM(void);
@@ -150,6 +149,7 @@ void initPHYSMEM()
 	_mmngr_max_blocks	=	(TotalRAM*1024) / PMMNGR_BLOCK_SIZE;
 	_mmngr_used_blocks	=	_mmngr_max_blocks;
 	_mmngr_free_blocks	=	0;
+	memset (_mmngr_memory_map, 0xf, pmmngr_get_block_count() / PMMNGR_BLOCKS_PER_BYTE );
 	initMMAP();
 }
 
@@ -282,19 +282,22 @@ void	pmmngr_paging_enable (bool b)
 		disable_paging();
 }
 
-bool pmmngr_is_paging () {
-/*unsigned int cr0;
-asm volatile("mov %%cr0, %0": "=b"(cr0));
-cr0 |= 0x80000000;
-asm volatile("mov %0, %%cr0":: "b"(cr0));*/
-	uint32_t res=0;
-
-	
-	return (res & 0x80000000) ? false : true;
+bool pmmngr_is_paging ()
+{
+	uint32_t cr0 = pmmngr_get_CR0();
+	cr0 |= 0x80000000;	
+	return (cr0 & 0x80000000) ? false : true;
 }
 
-void pmmngr_load_PDBR (physical_addr addr)
+void pmmngr_load_PDBR (physical_addr addr)		//I have NO CLUE if this will work...
 {
-	
+	/*#ifdef _MSC_VER
+	_asm {
+		mov	eax, [addr]
+		mov	cr3, eax		// PDBR is cr3 register in i86
+	}
+	#endif*/
+	__asm__ __volatile__ ("mov %0, %%eax":: "g" (addr): "memory");
+	__asm__ __volatile__ ("mov %%eax, %%cr3"::: "memory");
 }
 
