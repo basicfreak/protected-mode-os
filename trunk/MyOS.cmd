@@ -41,10 +41,12 @@
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/STRING.O ./LIBSRC/STRING.c
 		@ECHO TIMER.C
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/TIMER.O ./LIBSRC/TIMER.c
+		@ECHO TSS.C
+		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/TSS.O ./LIBSRC/TSS.c
 		@ECHO lib.a
 		ar rvs ./LIB/lib.a ./OBJ/CMOS.O ./OBJ/GDT.O ./OBJ/IDT.O ./OBJ/IRQ.O ./OBJ/KEYBOARD.O
 		ar rvs ./LIB/lib.a ./OBJ/TIMER.O ./OBJ/MATH.O ./OBJ/STDIO.O ./OBJ/STRING.O ./OBJ/DMA.O
-		ar rvs ./LIB/lib.a ./OBJ/FDC.O
+		ar rvs ./LIB/lib.a ./OBJ/FDC.O ./OBJ/TSS.O
 		@ECHO MEM/PHYSICAL.C
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/PHYSICAL.O ./LIBSRC/MEM/PHYSICAL.c
 		@ECHO MEM/VIRTUAL.C
@@ -97,10 +99,12 @@
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/STRING.O ./LIBSRC/STRING.c
 		@ECHO TIMER.C
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/TIMER.O ./LIBSRC/TIMER.c
+		@ECHO TSS.C
+		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/TSS.O ./LIBSRC/TSS.c
 		@ECHO lib.a
 		ar rvs ./LIB/lib.a ./OBJ/CMOS.O ./OBJ/GDT.O ./OBJ/IDT.O ./OBJ/IRQ.O ./OBJ/KEYBOARD.O
 		ar rvs ./LIB/lib.a ./OBJ/TIMER.O ./OBJ/MATH.O ./OBJ/STDIO.O ./OBJ/STRING.O ./OBJ/DMA.O
-		ar rvs ./LIB/lib.a ./OBJ/FDC.O
+		ar rvs ./LIB/lib.a ./OBJ/FDC.O ./OBJ/TSS.O
 		@ECHO MEM/PHYSICAL.C
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/PHYSICAL.O ./LIBSRC/MEM/PHYSICAL.c
 		@ECHO MEM/VIRTUAL.C

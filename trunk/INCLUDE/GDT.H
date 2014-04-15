@@ -5,6 +5,23 @@
 #ifndef				GDT_H_INCLUDED
 	#define				GDT_H_INCLUDED
 	
+	enum I86_GDT_DESC {
+		_ACCESS=0x0001,			//00000001
+		_READWRITE=0x0002,		//00000010
+		_EXPANSION=0x0004,		//00000100
+		_EXEC_CODE=0x0008,		//00001000
+		_CODEDATA=0x0010,		//00010000
+		_DPL=0x0060,			//01100000
+		_MEMORY=0x0080			//10000000
+	};
+	enum I86_GDT_GRAND {
+		_LIMITHI_MASK=0x0f,		//00001111
+		_OS=0x10,				//00010000
+		_32BIT=0x40,			//01000000
+		_4K=0x80				//10000000
+	};
+
+	
 	/* Defines a GDT entry. We say packed, because it prevents the
 	*  compiler from doing things that it thinks is best: Prevent
 	*  compiler "optimization" by packing */

@@ -31,16 +31,34 @@ void gdt_install()
     gp.base = &gdt;
 /* Our NULL descriptor */
     gdt_set_gate (0, 0, 0, 0, 0);
+	
+// KERNEL MODE RING 0
+
 /* The second entry is our Code Segment. The base address
 *  is 0, the limit is 4GBytes, it uses 4KByte granularity,
 *  uses 32-bit opcodes, and is a Code Segment descriptor.
 *  Please check the table above in the tutorial in order
 *  to see exactly what each value means */
-    gdt_set_gate (1, 0, 0xFFFFFFFF, 0x9A, 0xCF);
+    gdt_set_gate (1, 0, 0xFFFFFFFF,
+			_MEMORY | _CODEDATA | _EXEC_CODE | _READWRITE,
+			_4K | _32BIT | _LIMITHI_MASK);
 /* The third entry is our Data Segment. It's EXACTLY the
 *  same as our code segment, but the descriptor type in
 *  this entry's access byte says it's a Data Segment */
-    gdt_set_gate (2, 0, 0xFFFFFFFF, 0x92, 0xCF);
+    gdt_set_gate (2, 0, 0xFFFFFFFF,
+			_MEMORY | _CODEDATA | _READWRITE,
+			_4K | _32BIT | _LIMITHI_MASK);
+			
+// USER MODE RING 3
+	gdt_set_gate (3, 0, 0xFFFFFFFF,
+			_READWRITE | _EXEC_CODE | _CODEDATA | _MEMORY | _DPL,
+			_4K | _32BIT | _LIMITHI_MASK);
+			
+	gdt_set_gate (4, 0, 0xFFFFFFFF,
+			_READWRITE | _CODEDATA | _MEMORY | _DPL,
+			_4K | _32BIT | _LIMITHI_MASK);
+
+	
 /* Flush out the old GDT and install the new changes! */
     gdt_flush ();
 }
