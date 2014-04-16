@@ -81,7 +81,7 @@
 	
 	void floppy_set_dma (int addr);
 	bool floppy_init_dma(uint8_t* buffer, unsigned length);
-	uint8_t* floppy_readSector (int sectorLBA, int RAMlocation, uint8_t secotrs);
+	uint8_t* floppy_readSector (int sectorLBA, uint8_t secotrs);
 	void floppy_install(void);
 	void lbaCHS (int lba,int *head,int *track,int *sector);
 	void floppy_reset(void);

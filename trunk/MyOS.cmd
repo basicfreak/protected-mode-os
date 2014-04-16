@@ -59,6 +59,12 @@
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/PAGEFAULT.O ./LIBSRC/MEM/PAGEFAULT.c
 		@ECHO libMEM.a
 		ar rvs ./LIB/libMEM.a ./OBJ/PHYSICAL.O ./OBJ/VIRTUAL.O ./OBJ/PAGETABLE.O ./OBJ/PAGEDIR.O ./OBJ/PAGEFAULT.O
+		@ECHO FS/VFS.C
+		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/VFS.O ./LIBSRC/FS/VFS.c
+		@ECHO FS/FAT.C
+		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/FAT12.O ./LIBSRC/FS/FAT12.c
+		@ECHO libFS.a
+		ar rvs ./LIB/libFS.a ./OBJ/VFS.O ./OBJ/FAT12.O
 	)
 	IF /I '%INPUT%'=='2' (
 		@ECHO START.ASM
@@ -68,7 +74,7 @@
 		@ECHO COMMAND.C
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/COMMAND.O ./SRC/COMMAND.c
 		@ECHO LINKING KERNEL.BIN
-		LD -T LINK.LD -o B:\KERNEL.BIN ./OBJ/START.O ./OBJ/MAIN.O ./LIB/lib.a ./OBJ/COMMAND.O ./LIB/libMEM.a
+		LD -T LINK.LD -o B:\KERNEL.BIN ./OBJ/START.O ./OBJ/MAIN.O ./LIB/lib.a ./OBJ/COMMAND.O ./LIB/libMEM.a ./LIB/libFS.a
 	)
 	IF /I '%INPUT%'=='3' (
 		VFD SAVE
@@ -117,6 +123,12 @@
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/PAGEFAULT.O ./LIBSRC/MEM/PAGEFAULT.c
 		@ECHO libMEM.a
 		ar rvs ./LIB/libMEM.a ./OBJ/PHYSICAL.O ./OBJ/VIRTUAL.O ./OBJ/PAGETABLE.O ./OBJ/PAGEDIR.O ./OBJ/PAGEFAULT.O
+		@ECHO FS/VFS.C
+		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/VFS.O ./LIBSRC/FS/VFS.c
+		@ECHO FS/FAT12.C
+		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/FAT12.O ./LIBSRC/FS/FAT12.c
+		@ECHO libFS.a
+		ar rvs ./LIB/libFS.a ./OBJ/VFS.O ./OBJ/FAT12.O
 		@ECHO START.ASM
 		nasm -f aout ./SRC/START.ASM -o ./OBJ/START.O
 		@ECHO MAIN.C
@@ -124,7 +136,7 @@
 		@ECHO COMMAND.C
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/COMMAND.O ./SRC/COMMAND.c
 		@ECHO LINKING KERNEL.BIN
-		LD -T LINK.LD -o B:\KERNEL.BIN ./OBJ/START.O ./OBJ/MAIN.O ./LIB/lib.a ./OBJ/COMMAND.O ./LIB/libMEM.a
+		LD -T LINK.LD -o B:\KERNEL.BIN ./OBJ/START.O ./OBJ/MAIN.O ./LIB/lib.a ./OBJ/COMMAND.O ./LIB/libMEM.a ./LIB/libFS.a
 		VFD SAVE
 		BOCHS
 	)

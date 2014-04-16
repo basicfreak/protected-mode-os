@@ -8,8 +8,10 @@
 #include <MATH.H>
 #include <FDC.H>
 #include <MEM/PHYSICAL.H>
+#include <FS/VFS.H>
 
 void cmd_read (int sec, int num);
+void cat(char* path);
 void help(void);
 
 char cmd_command[1024];
@@ -19,6 +21,7 @@ void help()
 {
 	puts ("MyDOS v. 0.1\n");
 	puts ("-------------------------------------\n");
+	puts ("cat [PATH]      Reads File off disk\n");
 	puts ("cls             Clears Screen\n");
 	puts ("color [XX]      Sets color [XX] = hex\n");
 	puts ("echo [text]     Echos TEXT\n");
@@ -39,6 +42,8 @@ void do_CMD(int args)
 	int i = 0;
 	if (streql(explode_cmd[0], "cls"))
 		cls();
+	if (streql(explode_cmd[0], "cat"))
+		cat(explode_cmd[1]);
 	else if (streql(explode_cmd[0], "exit"))
 		CMD_ACTIVE = FALSE;
 	else if (streql(explode_cmd[0], "help"))
@@ -98,7 +103,7 @@ void cmd_read (int sec, int num)
 	printf ("\n\rSector %i contents:\n\n\r", sectornum);
 
 	//! read sector from disk
-	sector = floppy_readSector ( sectornum, 0x1000, (uint8_t) num );
+	sector = floppy_readSector ( sectornum, (uint8_t) num );
 
 	//! display sector
 	if (sector!=0) {
@@ -115,4 +120,38 @@ void cmd_read (int sec, int num)
 		printf ("\n\r*** Error reading sector from disk");
 
 	printf ("\n\rDone.");
+}
+
+void cat(char* path)
+{
+	//! open file
+	FILE file = VFS_OpenFile (path);
+	//! test for invalid file
+	if (file.flags == FS_INVALID) {
+		printf ("\n\rUnable to open file");
+		return;
+	}
+	//! cant display directories
+	if (( file.flags & FS_DIRECTORY ) == FS_DIRECTORY) {
+		printf ("\n\rUnable to display contents of directory.");
+		return;
+	}
+	//! top line
+	printf ("\n\n\r-------[%s]-------\n\r", file.name);
+	//! display file contents
+	while (file.eof != 1) {
+		//! read cluster
+		unsigned char buf[512];
+		VFS_ReadFile ( &file, buf, 512);
+		//! display file
+		for (int i=0; i<512; i++)
+			putch (buf[i]);
+		//! wait for input to continue if not EOF
+		if (file.eof != 1) {
+			getch ("\n\r------[Press a key to continue]------");
+			printf ("\r"); //clear last line
+		}
+	}
+	//! done :)
+	printf ("\n\n\r--------[EOF]--------");
 }

@@ -16,6 +16,7 @@
 #include <MEM/VIRTUAL.H>
 #include <MEM/PAGEFAULT.H>
 #include "COMMAND.H"
+#include <FS/FAT12.H>
 
 int main()
 {
@@ -32,6 +33,8 @@ int main()
 	vmmngr_initialize ();
 	__asm__ __volatile__ ("sti");					//DON'T FROGET TO RE-ENABLE INTS OR NOTHING WILL WORK RIGHT!!!!
 	floppy_install	();
+	fsysFatInitialize ();
+	
 	
 	setColor		(0x5F);
 	cls				();

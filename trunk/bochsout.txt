@@ -42,7 +42,7 @@
 00000000000i[DEV  ] PIIX3 PCI-to-ISA bridge present at device 1, function 0
 00000000000i[     ] init_dev of 'cmos' plugin device by virtual method
 00000000000i[CMOS ] Using local time for initial clock
-00000000000i[CMOS ] Setting initial clock to: Tue Apr 15 12:47:20 2014 (time0=1397584040)
+00000000000i[CMOS ] Setting initial clock to: Tue Apr 15 21:59:27 2014 (time0=1397617167)
 00000000000i[     ] init_dev of 'dma' plugin device by virtual method
 00000000000i[DMA  ] channel 4 used by cascade
 00000000000i[     ] init_dev of 'pic' plugin device by virtual method
@@ -193,28 +193,58 @@
 00002417668i[BXVGA] VBE known Display Interface b0c5
 00002420594i[VBIOS] VBE Bios $Id: vbe.c,v 1.64 2011/07/19 18:25:05 vruppert Exp $
 00014919121i[BIOS ] Booting from 0000:7c00
-00020579896i[MEM0 ] allocate_block: block=0x1 used 0x3 of 0x4
-00020618728i[MEM0 ] allocate_block: block=0x2 used 0x4 of 0x4
-00020906576i[FDD  ] controller reset in software
-00035204000p[WGUI ] >>PANIC<< POWER button turned off.
-00035204000i[CPU0 ] CPU is in protected mode (active)
-00035204000i[CPU0 ] CS.mode = 32 bit
-00035204000i[CPU0 ] SS.mode = 32 bit
-00035204000i[CPU0 ] EFER   = 0x00000000
-00035204000i[CPU0 ] | EAX=00000000  EBX=00000061  ECX=00000000  EDX=000003d5
-00035204000i[CPU0 ] | ESP=00108f70  EBP=00108f88  ESI=00000000  EDI=00107000
-00035204000i[CPU0 ] | IOPL=0 id vip vif ac vm rf nt of df IF tf sf zf af pf cf
-00035204000i[CPU0 ] | SEG sltr(index|ti|rpl)     base    limit G D
-00035204000i[CPU0 ] |  CS:0008( 0001| 0|  0) 00000000 ffffffff 1 1
-00035204000i[CPU0 ] |  DS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
-00035204000i[CPU0 ] |  SS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
-00035204000i[CPU0 ] |  ES:0010( 0002| 0|  0) 00000000 ffffffff 1 1
-00035204000i[CPU0 ] |  FS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
-00035204000i[CPU0 ] |  GS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
-00035204000i[CPU0 ] | EIP=00101a55 (00101a55)
-00035204000i[CPU0 ] | CR0=0xe0000011 CR2=0x00000000
-00035204000i[CPU0 ] | CR3=0x00003000 CR4=0x00000000
-00035204000i[CPU0 ] 0x0000000000101a55>> mov al, byte ptr ds:0x10a850 : A050A81000
-00035204000i[CMOS ] Last time is 1397584048 (Tue Apr 15 12:47:28 2014)
-00035204000i[     ] restoring default signal behavior
-00035204000i[CTRL ] quit_sim called with exit code 1
+00020943990i[MEM0 ] allocate_block: block=0x1 used 0x3 of 0x4
+00020983846i[MEM0 ] allocate_block: block=0x2 used 0x4 of 0x4
+00021269985i[FDD  ] controller reset in software
+00028567813i[FDD  ] controller reset in software
+00037794063e[FDD  ] port 0x3f5: no results to read
+00187208394i[FDD  ] controller reset in software
+00196418757e[FDD  ] port 0x3f5: no results to read
+00197520883i[FDD  ] controller reset in software
+00206758539e[FDD  ] port 0x3f5: no results to read
+00207846868i[FDD  ] controller reset in software
+00217070725e[FDD  ] port 0x3f5: no results to read
+00218172851i[FDD  ] controller reset in software
+00227396707e[FDD  ] port 0x3f5: no results to read
+00228498836i[FDD  ] controller reset in software
+00237722693e[FDD  ] port 0x3f5: no results to read
+00238824818i[FDD  ] controller reset in software
+00248048675e[FDD  ] port 0x3f5: no results to read
+00249150804i[FDD  ] controller reset in software
+00258374660e[FDD  ] port 0x3f5: no results to read
+00259476786i[FDD  ] controller reset in software
+00268700645e[FDD  ] port 0x3f5: no results to read
+00269802771i[FDD  ] controller reset in software
+00279026633e[FDD  ] port 0x3f5: no results to read
+00280128756i[FDD  ] controller reset in software
+00289352615e[FDD  ] port 0x3f5: no results to read
+00290454738i[FDD  ] controller reset in software
+00299678600e[FDD  ] port 0x3f5: no results to read
+00300780723i[FDD  ] controller reset in software
+00310004585e[FDD  ] port 0x3f5: no results to read
+00311106708i[FDD  ] controller reset in software
+00320330567e[FDD  ] port 0x3f5: no results to read
+00321446523i[FDD  ] controller reset in software
+00330656552e[FDD  ] port 0x3f5: no results to read
+00361604000p[WGUI ] >>PANIC<< POWER button turned off.
+00361604000i[CPU0 ] CPU is in protected mode (active)
+00361604000i[CPU0 ] CS.mode = 32 bit
+00361604000i[CPU0 ] SS.mode = 32 bit
+00361604000i[CPU0 ] EFER   = 0x00000000
+00361604000i[CPU0 ] | EAX=00000000  EBX=00000061  ECX=00000000  EDX=000003d5
+00361604000i[CPU0 ] | ESP=00109f70  EBP=00109f88  ESI=00000000  EDI=00108000
+00361604000i[CPU0 ] | IOPL=0 id vip vif ac vm rf nt of df IF tf sf zf af pf cf
+00361604000i[CPU0 ] | SEG sltr(index|ti|rpl)     base    limit G D
+00361604000i[CPU0 ] |  CS:0008( 0001| 0|  0) 00000000 ffffffff 1 1
+00361604000i[CPU0 ] |  DS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00361604000i[CPU0 ] |  SS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00361604000i[CPU0 ] |  ES:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00361604000i[CPU0 ] |  FS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00361604000i[CPU0 ] |  GS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00361604000i[CPU0 ] | EIP=00101a55 (00101a55)
+00361604000i[CPU0 ] | CR0=0xe0000011 CR2=0x00000000
+00361604000i[CPU0 ] | CR3=0x00003000 CR4=0x00000000
+00361604000i[CPU0 ] 0x0000000000101a55>> mov al, byte ptr ds:0x10b850 : A050B81000
+00361604000i[CMOS ] Last time is 1397617257 (Tue Apr 15 22:00:57 2014)
+00361604000i[     ] restoring default signal behavior
+00361604000i[CTRL ] quit_sim called with exit code 1

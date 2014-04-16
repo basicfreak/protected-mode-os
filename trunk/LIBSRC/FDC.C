@@ -9,7 +9,7 @@
 #include <IRQ.H>
 #include <TIMER.H>
 
-#define debug 1
+#define debug 0
 
 void floppy_dma_read ( int addr );
 void floppy_dma_write (void);
@@ -174,17 +174,9 @@ uint8_t floppy_status()
 }
 void floppy_handler(struct regs *r)
 { 
-	/*asm ("add %esp, 12");
-	asm ("pusha");
-	asm ("cli");
-*/
 	//! irq fired
 	_FloppyDiskIRQ = TRUE;
 	if(debug) puts("\nIRQ Revived\n");
-/*
-	asm ("sti");
-	asm ("popa");
-	asm ("iret");*/
 }
 void floppy_IRQ_handle(uint32_t* st0, uint32_t* cyl)
 {
@@ -351,7 +343,7 @@ void floppy_readSector_imp (uint8_t head, uint8_t track, uint8_t sector, uint8_t
 	uint32_t st0, cyl;
 	// set the DMA for read transfer
 	floppy_init_dma( (uint8_t*) DMA_BUFFER, 512*sectors );
-	//floppy_dma_read ( DMA_CHANNEL );  turned out to be in above function.
+	floppy_dma_read ( DMA_CHANNEL ); //  turned out to be in above function.
 	// read in a sector
 	FIFO_write ( READ_DATA | MULTI_TRACK | SKIP_MODE | MAGNETIC_ENCODING );
 //	FIFO_write ( READ_DATA );
@@ -378,7 +370,7 @@ bool floppy_seek ( uint8_t cyl, uint8_t head )
 {
 	uint32_t st0, cyl0;
 	if (floppy_drive_number >= 2)
-		return -1;
+		return 0;
 	for (int i = 0; i < 10; i++ ) {
 		// send the command
 		FIFO_write (SEEK);
@@ -395,9 +387,10 @@ bool floppy_seek ( uint8_t cyl, uint8_t head )
 	return false;
 	//return true;		//lets see if it is my seek failing on real hardware. Nope...
 }
-uint8_t* floppy_readSector (int sectorLBA, int RAMlocation, uint8_t sectors)
+
+uint8_t* floppy_readSector (int sectorLBA, uint8_t sectors)
 {
-	floppy_set_dma(RAMlocation);
+	floppy_set_dma(0x1000);
 //	floppy_reset();
 	fdc_quickReset();
 	timer_wait(1);
