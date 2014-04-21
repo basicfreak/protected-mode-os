@@ -42,7 +42,7 @@
 00000000000i[DEV  ] PIIX3 PCI-to-ISA bridge present at device 1, function 0
 00000000000i[     ] init_dev of 'cmos' plugin device by virtual method
 00000000000i[CMOS ] Using local time for initial clock
-00000000000i[CMOS ] Setting initial clock to: Mon Apr 21 14:23:43 2014 (time0=1398108223)
+00000000000i[CMOS ] Setting initial clock to: Mon Apr 21 14:58:08 2014 (time0=1398110288)
 00000000000i[     ] init_dev of 'dma' plugin device by virtual method
 00000000000i[DMA  ] channel 4 used by cascade
 00000000000i[     ] init_dev of 'pic' plugin device by virtual method
@@ -18645,26 +18645,27 @@
 00050844295i[CPU0 ] math_abort: MSDOS compatibility FPU exception
 00050879982i[FDD  ] controller reset in software
 00058885433e[FDD  ] port 0x3f5: no results to read
-00162479483i[CPU0 ] WARNING: HLT instruction with IF=0!
-00167204000p[WGUI ] >>PANIC<< POWER button turned off.
-00167204000i[CPU0 ] CPU is in protected mode (halted)
-00167204000i[CPU0 ] CS.mode = 32 bit
-00167204000i[CPU0 ] SS.mode = 32 bit
-00167204000i[CPU0 ] EFER   = 0x00000000
-00167204000i[CPU0 ] | EAX=00000001  EBX=00000004  ECX=00000050  EDX=00000018
-00167204000i[CPU0 ] | ESP=00108fe0  EBP=00108fe8  ESI=0000a000  EDI=00107000
-00167204000i[CPU0 ] | IOPL=0 id vip vif ac vm rf nt of df if tf sf zf af pf cf
-00167204000i[CPU0 ] | SEG sltr(index|ti|rpl)     base    limit G D
-00167204000i[CPU0 ] |  CS:0008( 0001| 0|  0) 00000000 ffffffff 1 1
-00167204000i[CPU0 ] |  DS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
-00167204000i[CPU0 ] |  SS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
-00167204000i[CPU0 ] |  ES:0010( 0002| 0|  0) 00000000 ffffffff 1 1
-00167204000i[CPU0 ] |  FS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
-00167204000i[CPU0 ] |  GS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
-00167204000i[CPU0 ] | EIP=0010061e (0010061e)
-00167204000i[CPU0 ] | CR0=0x60000011 CR2=0x00000000
-00167204000i[CPU0 ] | CR3=0x00000000 CR4=0x00000000
-00167204000i[CPU0 ] 0x000000000010061e>> jmp .-2 (0x0010061e) : EBFE
-00167204000i[CMOS ] Last time is 1398108264 (Mon Apr 21 14:24:24 2014)
-00167204000i[     ] restoring default signal behavior
-00167204000i[CTRL ] quit_sim called with exit code 1
+00086433784i[FDD  ] controller reset in software
+00094037722e[FDD  ] port 0x3f5: no results to read
+00299204000p[WGUI ] >>PANIC<< POWER button turned off.
+00299204000i[CPU0 ] CPU is in protected mode (active)
+00299204000i[CPU0 ] CS.mode = 32 bit
+00299204000i[CPU0 ] SS.mode = 32 bit
+00299204000i[CPU0 ] EFER   = 0x00000000
+00299204000i[CPU0 ] | EAX=00000000  EBX=00000004  ECX=00000000  EDX=000003d5
+00299204000i[CPU0 ] | ESP=00108f90  EBP=00108fa8  ESI=0000a000  EDI=00107000
+00299204000i[CPU0 ] | IOPL=0 id vip vif ac vm rf nt of df IF tf sf ZF af PF cf
+00299204000i[CPU0 ] | SEG sltr(index|ti|rpl)     base    limit G D
+00299204000i[CPU0 ] |  CS:0008( 0001| 0|  0) 00000000 ffffffff 1 1
+00299204000i[CPU0 ] |  DS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00299204000i[CPU0 ] |  SS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00299204000i[CPU0 ] |  ES:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00299204000i[CPU0 ] |  FS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00299204000i[CPU0 ] |  GS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00299204000i[CPU0 ] | EIP=001036c5 (001036c5)
+00299204000i[CPU0 ] | CR0=0x60000011 CR2=0x00000000
+00299204000i[CPU0 ] | CR3=0x00000000 CR4=0x00000000
+00299204000i[CPU0 ] 0x00000000001036c5>> cmp dword ptr ss:[ebp-12], 0x00000000 : 837DF400
+00299204000i[CMOS ] Last time is 1398110362 (Mon Apr 21 14:59:22 2014)
+00299204000i[     ] restoring default signal behavior
+00299204000i[CTRL ] quit_sim called with exit code 1
