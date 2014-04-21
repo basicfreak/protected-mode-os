@@ -28,7 +28,7 @@ int main()
     timer_install	();
 	initPHYSMEM();
 	init_pageFault();
-	//vmmngr_initialize ();
+	vmmngr_initialize ();
 	__asm__ __volatile__ ("sti");					//DON'T FROGET TO RE-ENABLE INTS OR NOTHING WILL WORK RIGHT!!!!
 	floppy_install	();
 	fsysFatInitialize ();

@@ -9,7 +9,7 @@
 #include <FDC.H>
 #include <MATH.H>
 
-#define debug 1
+#define debug 0
 
 #define SECTOR_SIZE 512
 FILESYSTEM _FSysFat;
@@ -19,6 +19,10 @@ RDIRS FATRDIR;
 PRDIR _ROOTdir;
 RDIRS TempDir;
 PRDIR _CurDir;
+
+
+void ToDosFileName (const char* filename, char* fname, unsigned int FNameLength);
+
 
 void FATBlock_init()
 {
@@ -87,46 +91,48 @@ void ROOTdir_init()
 	for (int i = 0; i < 224; i++) {
 		_ROOTdir->entry[i] = &(FATRDIR.entry[i]);
 	}
-	_CurDir = _ROOTdir;
 	if(debug)dirTest();
 }
 
-PRDIR getSubDirectory(FILE subDir)
+FILE SearchSubDirectory(FILE subDir, const char* FName)
 {
-	if (debug) puts("getSubDirectory(FILE)\n");
-	unsigned char data[512];
-	unsigned char ALLdata[512*14];
-	PRDIR ret;
-	int i = 0;
+	if (debug) printf("SearchSubDirectory(FILE, %s)\n", FName);
+
+	FILE ret;
+	ret.flags = FS_INVALID;
+	
+	char DosFileName[12];
+	ToDosFileName (FName, DosFileName, 11);
+	DosFileName[11]=0;
+	
+	unsigned char data[0x200];
 	while (subDir.eof != 1) {
-		fsysFatRead ( &subDir, &ALLdata[0x200*i], 512);
-		i++;
-	}
-	memcpy(&TempDir, ALLdata, i*0x200);
-	for (int z = 0; z < i*(512/32); z++) {
-		ret->entry[z] = &(TempDir.entry[z]);
+		fsysFatRead ( &subDir, data, 0x200);
+		for (int i = 0; i < 0x10; i++) {		//search section of directory for FName 0x200/0x20=0x10
+			PDIRECTORY temp = (PDIRECTORY) &data[i*0x20];
+			char name[12];
+			memcpy (name, temp->Filename, 11);
+			name[11]=0;
+			if (streql (DosFileName, name)) {
+				// found it, set up file info
+				strcpy (ret.name, FName);
+				ret.id             = 0;
+				ret.currentCluster = temp->FirstCluster;
+				ret.fileLength     = temp->FileSize;
+				ret.eof            = 0;
+				ret.fileLength     = temp->FileSize;
+				// set file type
+				if (temp->Attrib == 0x10)
+					ret.flags = FS_DIRECTORY;
+				else
+					ret.flags = FS_FILE;
+				// return file
+				return ret;
+			}
+		}
 	}
 	return ret;
 }
-
-/***void ROOTdir_init()
-{
-	int j = 0;
-	PRDIRS data = (PRDIRS) floppy_readSector(19, 14);
-	memcpy(&FATRDIR, data, SECTOR_SIZE*14);
-	for(int i = 0; i < 224; i++) {
-		PDIRECTORY temp = &FATRDIR.entry[i];
-		if(temp->Filename[0] != 0xE5 && temp->Filename[0] != 0) {
-			_ROOTdir->entry[j] = &FATRDIR.entry[i];
-			j++;
-		}
-	}
-	DIRECTORY temp;
-	temp.Filename[0] = 0;
-	for(;j<224;j++)
-		_ROOTdir->entry[j] = &temp;
-	if(debug) dirTest();
-}**/
 
 void ToDosFileName (const char* filename, char* fname, unsigned int FNameLength)
 {
@@ -168,7 +174,7 @@ FILE fsysFatDirectory (const char* DirectoryName)
 	DosFileName[11]=0;
 	// get current filename
 	for (int i = 0; i < 224; i++) {
-		PDIRECTORY directory = _CurDir->entry[i];
+		PDIRECTORY directory = _ROOTdir->entry[i];
 		char name[12];
 		memcpy (name, directory->Filename, 11);
 		name[11]=0;
@@ -200,9 +206,6 @@ void fsysFatRead(PFILE file, unsigned char* Buffer, unsigned int Length)
 {
 	if (debug) printf("fsysFatRead(FILE, %x, %x)\n", Buffer, Length);
 	if (file) {
-		// starting physical sector
-		///unsigned int physSector = 32 + (file->currentCluster);
-		// read in sector
 		unsigned char* sector = (unsigned char*) floppy_readSector ( 31 + file->currentCluster, 1 );
 		// copy block of memory
 		memcpy (Buffer, sector, 512);
@@ -228,67 +231,16 @@ void fsysFatClose (PFILE file)
 		file->flags = FS_INVALID;
 }
 
-FILE fsysFatOpenSubDir (FILE kFile, const char* filename)
-{
-	if (debug) printf("fsysFatOpenSubDir(FILE, %s)\n", filename);
-	FILE file;
-	// get 8.3 directory name
-	char DosFileName[11];
-	ToDosFileName (filename, DosFileName, 11);
-	DosFileName[11]=0;
-	if (kFile.flags != FS_INVALID) {
-		// read directory
-		while (! kFile.eof ) {
-			// read directory
-			unsigned char buf[512];
-			fsysFatRead (&file, buf, 512);
-			// set directort
-			PDIRECTORY pkDir = (PDIRECTORY) buf;
-			// 16 entries in buffer
-			for (unsigned int i = 0; i < 16; i++) {
-				// get current filename
-				char name[11];
-				memcpy (name, pkDir->Filename, 11);
-				name[11]=0;
-				// match?
-				if (streql (name, DosFileName)) {
-					// found it, set up file info
-					strcpy (file.name, filename);
-					file.id             = 0;
-					file.currentCluster = pkDir->FirstCluster;
-					file.fileLength     = pkDir->FileSize;
-					file.eof            = 0;
-					file.fileLength     = pkDir->FileSize;
-					// set file type
-					if (pkDir->Attrib == 0x10)
-						file.flags = FS_DIRECTORY;
-					else
-						file.flags = FS_FILE;
-					// return file
-					return file;
-				}
-				// go to next entry
-				pkDir++;
-			}
-		}
-	}
-	// unable to find file
-	file.flags = FS_INVALID;
-	return file;
-}
-
 FILE fsysFatOpen (const char* FileName)
 {
 	if (debug) printf("fsysFatOpen(%s)\n", FileName);
 	FILE curDirectory;
 	char* p = 0;
-	bool rootDir=true;
 	char* path = (char*) FileName;
 	// any '\'s in path?
 	p = strchr (path, '\\');
 	if (!p) {
 		// nope, must be in root directory, search it
-		_CurDir = _ROOTdir;
 		curDirectory = fsysFatDirectory (path);
 		// found file?
 		if (curDirectory.flags == FS_FILE)
@@ -298,34 +250,27 @@ FILE fsysFatOpen (const char* FileName)
 		char out[50][100];
 		int temp = explode( out, (const char *)path, '\\' );
 		for (int z = 0; z < temp; z ++) {
-			printf("%i = %s\n", z, out[z]);
+			if (debug) printf("%i = %s\n", z, out[z]);
 			if (!z) { // z = 0 looking for first sub dir
-				_CurDir = _ROOTdir;
 				curDirectory = fsysFatDirectory (out[z]);
 				// found file?
 				if (curDirectory.flags != FS_DIRECTORY) { //subdirectory NOT found
 					FILE ret;
 					ret.flags = FS_INVALID;
 					return ret;
-				if (curDirectory.flags == FS_FILE)
-					return curDirectory;
 				}
 			}
 			else {
-				_CurDir = getSubDirectory(curDirectory);
-				curDirectory = fsysFatDirectory (out[z]);
+				curDirectory =  SearchSubDirectory(curDirectory, out[z]);
+				//curDirectory = fsysFatDirectory (out[z]);
 				if (curDirectory.flags != FS_DIRECTORY) { //subdirectory NOT found
 					FILE ret;
 					ret.flags = FS_INVALID;
 					return ret;
-				if (curDirectory.flags == FS_FILE)
-					return curDirectory;
 				}
 			}
 		}
-		_CurDir = getSubDirectory(curDirectory);
-		curDirectory = fsysFatDirectory (out[temp]);
-		_CurDir = _ROOTdir;
+		curDirectory =  SearchSubDirectory(curDirectory, out[temp]);
 		if (curDirectory.flags == FS_FILE)
 			return curDirectory;
 	}

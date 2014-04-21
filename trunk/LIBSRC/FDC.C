@@ -425,7 +425,6 @@ bool floppy_seek ( uint8_t cyl, uint8_t head )
 uint8_t* floppy_readSector (int sectorLBA, uint8_t sectors)
 {
 if (debug) printf ("floppy_readSector(%x, %x)\n", sectorLBA, sectors);
-if(sectorLBA < 2880) {
 	floppy_set_dma(0x3500);
 //	floppy_reset();
 	fdc_quickReset();
@@ -445,7 +444,7 @@ if(sectorLBA < 2880) {
 	floppy_motor (false);
 	// warning: this is a bit hackish
 	return (uint8_t*) DMA_BUFFER;
-}}
+}
 
 
 /* Sets up the Floppy Controller into IRQ6 */

@@ -5,6 +5,8 @@
 #include <KEYBOARD.H>
 #include <IRQ.H>
 
+extern unsigned char inb (unsigned short _port);
+
 unsigned char keyboard[128] =
 {
     0,  27, '1', '2', '3', '4', '5', '6', '7', '8',	/* 9 */
