@@ -21,6 +21,7 @@
 	void				initVideo(void);
 	void				puts(char *message);
 	void				printf(char *message, ...);
+	void				printfc(int cSet, char *message, ...);
 	void				putch(char charactor);
 	void				movcur(int x, int y);
 	void				scrollScreen();

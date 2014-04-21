@@ -142,6 +142,69 @@ void printf(char *message, ...)
 	return;
 }
 
+printfc(int cSet, char *message, ...) {
+	int tempColor = getColor();
+	setColor(cSet);
+	va_list ap;
+	va_start(ap, message);
+	size_t i;
+	for (i=0 ; i<strlen(message)-1;i++)
+	{
+		switch (message[i]) {
+			case '%':
+				switch (message[i+1])
+				{
+					/*** characters ***/
+					case 'c': {
+						char c = va_arg (ap, char);
+						putch(c);
+						i++;
+						break;
+					}
+					/*** integers ***/
+					case 'd':
+					case 'i':
+					{
+						int c = va_arg (ap, int);
+						char s[32]={0};
+						itoa_s (c, 10, s);
+						puts(s);
+						i++;		// go to next character
+						break;
+					}
+					/*** display in hex ***/
+					case 'X':
+					case 'x':
+					{
+						int c = va_arg (ap, int);
+						char s[32]={0};
+						itoa_s (c,16,s);
+						puts(s);
+						i++;		// go to next character
+						break;
+					}
+					/*** strings ***/
+					case 's':
+					{
+						char *c = va_arg (ap, char*);
+						char s[32]={0};
+						strcpy (s,(const char*)c);						
+						puts(s);
+						i++;		// go to next character
+						break;
+					}
+				}
+				break;
+			default:
+				putch(message[i]);
+				break;
+		}
+	}
+	movcur			(curX, curY);
+	setColor(tempColor);
+	return;
+}
+
 void putch(char charactor)
 {
 /*
