@@ -5,9 +5,7 @@
 #include <GDT.H>
 #include <IDT.H>
 #include <IRQ.H>
-#include <STRING.H>
 #include <STDIO.H>
-#include <MATH.H>
 #include <TIMER.H>
 #include <CMOS.H>
 #include <KEYBOARD.H>
@@ -35,31 +33,8 @@ int main()
 	floppy_install	();
 	fsysFatInitialize ();
 	
+	//printf ("textTOhex() test: 07 = %i && CF = %i", textTOhex("07"), textTOhex("CF"));
 	
-	setColor		(0x5F);
-	cls				();
-	setColor		(0x4F);
-	puts			("Hello World\nKernel Test\nWill the first letter on this line be a Z\?\rZ");
-	setColor		(0x1F);
-	puts			("\f\'\\\"\nThe last letter on this line should be an X, right\bX\?\ntab test\t...\v...\n");
-	unsigned int divtest = 85 / 1024;
-	printf ("\n\t\t85/1024=%i", divtest);
-	divtest = 2000 / 1024;
-	printf ("\t\t2000/1024=%i\n", divtest);
-/*initMEM();
-BPB_init();
-FAT_init();	
-ROOT_init();*/
-	printf ("textTOhex() test: 07 = %i && CF = %i", textTOhex("07"), textTOhex("CF"));
-	printf ("\nAnd for S&G 1c5A8d9 = %i & 29731033 = %s", textTOhex("1c5A8d9"), hexTOtext(textTOhex("1c5A8d9")));
-	
-	printf ("\nCMOS Read Test:\nMaster Floppy = %i = %s\nSlave Floppy = %i = %s\n", CMOS_Floppy_Master, CMOS_Floppy_Decode(CMOS_Floppy_Master), CMOS_Floppy_Slave, CMOS_Floppy_Decode(CMOS_Floppy_Slave));
-	printf ("\'a\' => \'%c\' => \'%c\'\n", ChartoUpper( 'a' ), ChartoLower( ChartoUpper('a') ) );
-	printf ("\'A\' => \'%c\' => \'%c\'\n", ChartoUpper( 'A' ), ChartoLower( ChartoUpper('A') ) );
-	printf ("\"p\" => \"%s\" => \"%s\"\n", StringtoUpper( "p" ), StringtoLower( StringtoUpper("p") ) );
-	printf ("\"pUmPkIn\" => \"%s\" => \"%s\"\n", StringtoUpper( "pUmPkIn" ), StringtoLower( StringtoUpper("pUmPkIn") ) );
-	printf ("BIN to INT test: \"P@ \" = %i (2113616)\n", BIN2INT((unsigned char*)"P@ "));
-	printf ("1 << 1 = 0x%x", (1<<1));
 	init_cmd ();
 	while(CMD_ACTIVE)
 		cmd_handler();
@@ -86,7 +61,7 @@ ROOT_init();*/
 	puts("             GOOD BYE!");
 	//__asm__ __volatile__ ("sti");
 	__asm__ __volatile__ ("hlt");
-	sleep(60);				//wait 60 seconds and display EASTER EGG
+/*	sleep(60);				//wait 60 seconds and display EASTER EGG
 	__asm__ __volatile__ ("cli");
 	setColor (0x1F);
 	cls();
@@ -99,6 +74,7 @@ Despite those nets of tuna fleets\nWe thought that most of you were sweet\nEspec
 So long, so long, so long, so long, so long\nSo long, so long, so long, so long, so long\n\n\
 So long, so long and thanks\nfor all the fish\n");
 	__asm__ __volatile__ ("hlt");
+*/
 	for(;;);
 	return 0;
 }

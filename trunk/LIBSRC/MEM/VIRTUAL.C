@@ -60,16 +60,15 @@ void vmmngr_initialize ()
    // clear page table
    memset (table, 0, sizeof (struct ptable));
 
-   // 1st 4mb are idenitity mapped
+   // 1st 8mb are idenitity mapped
    for (int i=0, frame=0x0, virt=0x00000000; i<1024; i++, frame+=4096, virt+=4096) {
 		pt_entry page=0;
 		pt_entry_add_attrib (&page, I86_PTE_PRESENT);
 		pt_entry_set_frame (&page, frame);
 		table2->m_entries [PAGE_TABLE_INDEX (virt) ] = page;
    }
-
-   // map 1mb to 3gb To test MMU
-   for (int i=0, frame=0x100000, virt=0xc0000000; i<1024; i++, frame+=4096, virt+=4096) {
+   /// map 1mb to 3gb To test MMU
+   for (int i=0, frame=0x400000, virt=0x400000; i<1024; i++, frame+=4096, virt+=4096) {
 		pt_entry page=0;
 		pt_entry_add_attrib (&page, I86_PTE_PRESENT);
 		pt_entry_set_frame (&page, frame);
@@ -85,12 +84,12 @@ void vmmngr_initialize ()
   memset (dir, 0, sizeof (struct pdirectory));
 
    // get first entry in dir table and set it up to point to our table
-   pd_entry* entry = &dir->m_entries [PAGE_DIRECTORY_INDEX (0xc0000000) ];
+   pd_entry* entry = &dir->m_entries [PAGE_DIRECTORY_INDEX (0x400000) ];
    pd_entry_add_attrib (entry, I86_PDE_PRESENT);
    pd_entry_add_attrib (entry, I86_PDE_WRITABLE);
    pd_entry_set_frame (entry, (physical_addr)table);
-
-   pd_entry* entry2 = &dir->m_entries [PAGE_DIRECTORY_INDEX (0x00000000) ];
+   
+   pd_entry* entry2 = &dir->m_entries [PAGE_DIRECTORY_INDEX (0x0) ];
    pd_entry_add_attrib (entry2, I86_PDE_PRESENT);
    pd_entry_add_attrib (entry2, I86_PDE_WRITABLE);
    pd_entry_set_frame (entry2, (physical_addr)table2);

@@ -16,6 +16,15 @@
 	typedef long long  int64_t;
 	typedef unsigned long long   uint64_t;
 
+	typedef signed char* int8_p;
+	typedef unsigned char*   uint8_p;
+	typedef short*  int16_p;
+	typedef unsigned short*  uint16_p;
+	typedef int*  int32_p;
+	typedef unsigned*   uint32_p;
+	typedef long long*  int64_p;
+	typedef unsigned long long*   uint64_p;
+	
 	/* 7.18.1.2  Minimum-width integer types */
 	typedef signed char int_least8_t;
 	typedef unsigned char   uint_least8_t;

@@ -8,6 +8,7 @@
 	ECHO -------------------------MY OS MENU-------------------------
 	ECHO ------------------------------------------------------------
 	ECHO 1.    BUILD LIBRARY
+	ECHO `.    BUILD File Systems
 	ECHO 2.    BUILD KERNEL
 	ECHO 3.    SAVE IMAGE
 	ECHO 4.    RUN BOCHS
@@ -66,6 +67,14 @@
 		@ECHO libFS.a
 		ar rvs ./LIB/libFS.a ./OBJ/VFS.O ./OBJ/FAT12.O
 	)
+	IF /I '%INPUT%'=='`' (
+		@ECHO FS/VFS.C
+		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/VFS.O ./LIBSRC/FS/VFS.c
+		@ECHO FS/FAT.C
+		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/FAT12.O ./LIBSRC/FS/FAT12.c
+		@ECHO libFS.a
+		ar rvs ./LIB/libFS.a ./OBJ/VFS.O ./OBJ/FAT12.O
+	)
 	IF /I '%INPUT%'=='2' (
 		@ECHO START.ASM
 		nasm -f aout ./SRC/START.ASM -o ./OBJ/START.O
@@ -74,7 +83,7 @@
 		@ECHO COMMAND.C
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/COMMAND.O ./SRC/COMMAND.c
 		@ECHO LINKING KERNEL.BIN
-		LD -T LINK.LD -o B:\KERNEL.BIN ./OBJ/START.O ./OBJ/MAIN.O ./LIB/lib.a ./OBJ/COMMAND.O ./LIB/libMEM.a ./LIB/libFS.a
+		LD -T LINK.LD -o B:\KERNEL.BIN ./OBJ/START.O ./OBJ/MAIN.O ./OBJ/COMMAND.O ./LIB/libFS.a ./LIB/libMEM.a ./LIB/lib.a
 	)
 	IF /I '%INPUT%'=='3' (
 		VFD SAVE
@@ -136,7 +145,7 @@
 		@ECHO COMMAND.C
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/COMMAND.O ./SRC/COMMAND.c
 		@ECHO LINKING KERNEL.BIN
-		LD -T LINK.LD -o B:\KERNEL.BIN ./OBJ/START.O ./OBJ/MAIN.O ./LIB/lib.a ./OBJ/COMMAND.O ./LIB/libMEM.a ./LIB/libFS.a
+		LD -T LINK.LD -o B:\KERNEL.BIN ./OBJ/START.O ./OBJ/MAIN.O ./OBJ/COMMAND.O ./LIB/libFS.a ./LIB/libMEM.a ./LIB/lib.a
 		VFD SAVE
 		BOCHS
 	)

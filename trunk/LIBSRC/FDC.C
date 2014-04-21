@@ -14,7 +14,7 @@
 void floppy_dma_read ( int addr );
 void floppy_dma_write (void);
 uint8_t FIFO_read(void);
-void FIFO_write(uint8_t cmd);
+bool FIFO_write(uint8_t cmd);
 void DOR_write(uint8_t cmd);
 bool floppy_waitIRQ(void);		
 bool FIFO_ready(void);
@@ -48,6 +48,7 @@ void floppy_set_dma (int addr)
 //initialize DMA to use phys addr 1k-64k
 bool floppy_init_dma(uint8_t* buffer, unsigned length)
 {
+if (debug) printf ("floppy_init_dma(%x, %x)\n", buffer, length);
 	union {
       uint8_t byte[4];//Lo[0], Mid[1], Hi[2]
       unsigned long l;
@@ -86,19 +87,20 @@ uint8_t FIFO_read()
 {
 	for (int i = 0; i < 750; i++ ) {
 		if ( FIFO_ready () ) {
-			if (debug) puts("FIFO Read\n");
+///			if (debug) puts("FIFO Read\n");
 			return inb (FIFO);
 		}// else timer_wait(1);
 	}
 	if (debug) puts ("FIFO FAILED TO READ Continue...\n");
 	return 0;
 }
-void FIFO_write(uint8_t cmd)
+bool FIFO_write(uint8_t cmd)
 {
 	for (int i = 0; i < 750; i++ ) {
 		if ( FIFO_ready () ) {
-			if (debug) puts("FIFO Wrote\n");
-			return outb (FIFO, cmd);
+///			if (debug) puts("FIFO Wrote\n");
+			outb (FIFO, cmd);
+			return 1;
 		}// else timer_wait(1);
 	}
 	if (debug) puts ("FIFO FAILED TO WRITE Continue...\n");
@@ -118,7 +120,7 @@ bool floppy_waitIRQ()
 		timer_wait(2);
 		timeout--;
 	}
-	if (debug) printf ("\tDone Waiting for IRQ %i Timeout remaining\n",timeout);
+	if (debug) printf ("\tDone %i Timeout\n",timeout);
 	_FloppyDiskIRQ = FALSE;
 	if (!timeout) return FALSE;
 	else return TRUE;
@@ -128,9 +130,7 @@ void floppy_reset()
 {
 	uint32_t st0, cyl;
 	//reset the controller
-	if (debug) puts("fdc_disable()\n");
 	fdc_disable ();
-	if (debug) puts("fdc_enable()\n");
 	fdc_enable ();
 	
 	if(floppy_waitIRQ ()) {
@@ -140,20 +140,24 @@ void floppy_reset()
 			floppy_IRQ_handle (&st0,&cyl);
 		}
 	}
-	else if (debug) puts("IRQ not revived\n");
-	if (debug) puts("fdc send CONFIGURE to FIFO\n");
+	else
+	{
+		if (debug) puts("IRQ not revived\n");
+		floppy_reset();
+	}
+///	if (debug) puts("fdc send CONFIGURE to FIFO\n");
 	FIFO_write (CONFIGURE);
 	//outb (FIFO, CONFIGURE);
 	// transfer speed 500kb/s
-	if (debug) puts("floppy_speed()\n");
+///	if (debug) puts("floppy_speed()\n");
 	floppy_speed (curFloppy_speed);
 	// pass mechanical drive info. steprate=3ms, unload time=240ms, load time=16ms
-	if (debug) puts("fdc send Mechanical info\n");
+///	if (debug) puts("fdc send Mechanical info\n");
 	floppy_mechanical_info (3,16,240,true);
 	// calibrate the disk
-	if (debug) puts("waitIRQ\n");
+///	if (debug) puts("waitIRQ\n");
 	
-	if (debug) puts("calibrate:");
+///	if (debug) puts("calibrate:");
 	floppy_calibrate ();
 	FIFO_write (LOCK);
 	return;
@@ -164,7 +168,7 @@ bool FIFO_ready()
 	//int temp = floppy_status();
 	//if ( (temp & 0xc0) == 0x80 || (temp & 0xc0) == 0x81) ret = TRUE;
 	if (floppy_status () & 0x80) ret = TRUE;
-	if (debug && ret) puts("FIFO Ready\n");
+///	if (debug && ret) puts("FIFO Ready\n");
 	//if (debug && !ret) puts("FIFO NOT Ready\n");
 	return ret;
 }
@@ -174,12 +178,14 @@ uint8_t floppy_status()
 }
 void floppy_handler(struct regs *r)
 { 
+	
 	//! irq fired
 	_FloppyDiskIRQ = TRUE;
-	if(debug) puts("\nIRQ Revived\n");
+	if(debug) puts("\tIRQ Revived\t");
 }
 void floppy_IRQ_handle(uint32_t* st0, uint32_t* cyl)
 {
+	if (debug) puts ("floppy_IRQ_handle(st0, cyl)\t");
 	for (int i = 0; i < 75; i++) {
 		if (FIFO_ready()) {
 			FIFO_write(SENSE_INTERRUPT);
@@ -204,6 +210,7 @@ bool floppy_changed()
 }
 void floppy_motor(bool on)
 {
+	if (debug) printf ("Motor = %i\n", on);
 	if(on) DOR_write (0x0C | floppy_drive_number  | FLOPPY_MOTOR_LIST[floppy_drive_number]);
 	else DOR_write (0x0C | floppy_drive_number);
 	timer_wait(5);
@@ -230,15 +237,21 @@ void fdc_quickReset()
 	uint32_t st0, cyl0;
 	fdc_disable();
 	fdc_enable();
-	if (floppy_waitIRQ())
-			floppy_IRQ_handle (&st0,&cyl0);
+	if (floppy_waitIRQ()) {
+		floppy_IRQ_handle (&st0,&cyl0);
+		floppy_IRQ_handle (&st0,&cyl0);
+		floppy_IRQ_handle (&st0,&cyl0);
+		floppy_IRQ_handle (&st0,&cyl0);
+	} else floppy_reset();
 }
 void fdc_enable()
 {
+	if (debug) puts("fdc_enable()\n");
 	DOR_write (0x0C | floppy_drive_number);
 }
 void fdc_disable()
 {
+	if (debug) puts("fdc_disable()\n");
 	DOR_write (0);
 }
 void floppy_setVars(int i)
@@ -292,14 +305,15 @@ void floppy_setVars(int i)
 //pass mechanical drive info. step rate=3ms, unload time=240ms, load time=16ms
 void floppy_mechanical_info (uint8_t stepr, uint8_t loadt, uint8_t unloadt, bool dma )
 {
+	if (debug) puts ("Send Mechanical Info\n");
 	uint8_t data = 0;
-	if (debug) puts("fdc send SPECIFY to FIFO\n");
+///	if (debug) puts("fdc send SPECIFY to FIFO\n");
 	FIFO_write (SPECIFY);
 	data = ( (stepr & 0xf) << 4) | (unloadt & 0xf);
-	if (debug) printf("fdc send 0x%x to FIFO\n", data);
+///	if (debug) printf("fdc send 0x%x to FIFO\n", data);
 		FIFO_write (data);
 	data = (( loadt << 1 ) | ( (dma) ? 0 : 1 ) );
-	if (debug) printf("fdc send 0x%x to FIFO\n", data);
+///	if (debug) printf("fdc send 0x%x to FIFO\n", data);
 		FIFO_write (data);
 }
 
@@ -311,7 +325,7 @@ int floppy_calibrate()
 	for (int i = 0; i < 4; i++)
 	{
 		// send command
-		if (debug) puts ("\nSend Recalibrate command\n");
+		if (debug) puts ("Send Recalibrate command\t");
 		FIFO_write ( RECALIBRATE );
 		//outb (FIFO, RECALIBRATE);
 		if (debug) puts ("Send Drive Number\n");
@@ -330,16 +344,21 @@ int floppy_calibrate()
 			}
 			else { if (debug) puts ("Not at 0\n"); }
 		}
-		else { if (debug) puts ("No IRQ\n");  }
+		else
+		{
+			if (debug) puts ("No IRQ\n");
+			floppy_reset();
+		}
 	}
 	if (debug) puts ("NOT Calibrated!\n");
-	floppy_motor (false);
+	//floppy_motor (false);
 	return -1;
 }
 
 
 void floppy_readSector_imp (uint8_t head, uint8_t track, uint8_t sector, uint8_t sectors)
 {
+if (debug) printf ("floppy_readSector_imp(%x, %x, %x, %x)\n", head, track, sector, sectors);
 	uint32_t st0, cyl;
 	// set the DMA for read transfer
 	floppy_init_dma( (uint8_t*) DMA_BUFFER, 512*sectors );
@@ -364,36 +383,51 @@ void floppy_readSector_imp (uint8_t head, uint8_t track, uint8_t sector, uint8_t
 			FIFO_read ();
 		// let FDC know we handled interrupt
 		floppy_IRQ_handle (&st0,&cyl);
+	} else {
+		//floppy_reset();
+		//floppy_readSector_imp (head, track, sector, sectors);
 	}
 }
+int tries = 4;
 bool floppy_seek ( uint8_t cyl, uint8_t head )
 {
-	uint32_t st0, cyl0;
-	if (floppy_drive_number >= 2)
-		return 0;
-	for (int i = 0; i < 10; i++ ) {
-		// send the command
-		FIFO_write (SEEK);
-		FIFO_write ( (head) << 2 | floppy_drive_number);
-		FIFO_write (cyl);
-		// wait for the results phase IRQ
-		if (floppy_waitIRQ()) {
-			floppy_IRQ_handle (&st0,&cyl0);
-			// found the cylinder?
-			if ( cyl0 == cyl)
-				return true;
+	tries = 4;
+	if (debug)
+		printf ("floppy_seek(%x, %x)\n", cyl, head);
+	if (cyl < (uint8_t) curFloppy_cylinders) {
+		uint32_t st0, cyl0;
+		if (floppy_drive_number >= 2)
+			return 0;
+		for (int i = 0; i < 10; i++ ) {
+			// send the command
+			FIFO_write (SEEK);
+			FIFO_write ( (head) << 2 | floppy_drive_number);
+			FIFO_write (cyl);
+			// wait for the results phase IRQ
+			if (floppy_waitIRQ()) {
+				floppy_IRQ_handle (&st0,&cyl0);
+				// found the cylinder?
+				if ( cyl0 == cyl)
+					return true;
+			} else {
+				floppy_reset();
+				tries--;
+				if(tries) floppy_seek ( cyl, head );
+				else return false;
+			}
 		}
 	}
+	else
+		getch("floppy_seek(): Invalid Cylinder\n");
 	return false;
-	//return true;		//lets see if it is my seek failing on real hardware. Nope...
 }
 
 uint8_t* floppy_readSector (int sectorLBA, uint8_t sectors)
 {
-	floppy_set_dma(0x1000);
+if (debug) printf ("floppy_readSector(%x, %x)\n", sectorLBA, sectors);
+	floppy_set_dma(0x3500);
 //	floppy_reset();
 	fdc_quickReset();
-	timer_wait(1);
 	if (floppy_drive_number >= 2)
 		return 0;
 	// convert LBA sector to CHS
@@ -401,7 +435,6 @@ uint8_t* floppy_readSector (int sectorLBA, uint8_t sectors)
 	lbaCHS (sectorLBA, &head, &track, &sector);
 	// turn motor on and seek to track
 	floppy_motor (true);
-	sleep(1);
 	if (!floppy_seek ((uint8_t)track, (uint8_t)head)) {
 		puts("Did not seek properly!\n");
 		return 0;

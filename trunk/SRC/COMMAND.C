@@ -2,13 +2,14 @@
 ./SRC/COMMAND.C
 */
 
-#include "COMMAND.H"
-#include <STDIO.H>
-#include <STRING.H>
 #include <MATH.H>
+#include "COMMAND.H"
+#include <STRING.H>
+#include <STDIO.H>
 #include <FDC.H>
 #include <MEM/PHYSICAL.H>
 #include <FS/VFS.H>
+#include <FS/FAT12.H>
 
 void cmd_read (int sec, int num);
 void cat(char* path);
@@ -40,6 +41,8 @@ void help()
 void do_CMD(int args)
 {
 	int i = 0;
+	if (streql(explode_cmd[0], "initfat"))
+		fsysFatInitialize ();
 	if (streql(explode_cmd[0], "cls"))
 		cls();
 	if (streql(explode_cmd[0], "cat"))
@@ -76,6 +79,8 @@ void do_CMD(int args)
 	}
 	else if (streql(explode_cmd[0], "read"))
 		cmd_read( charTOint(explode_cmd[1]), charTOint(explode_cmd[2]));
+	else if (streql(explode_cmd[0], "dir"))
+		dirTest();
 	else
 		printf("Invalid Command \"%s\"", cmd_command);
 }
@@ -93,6 +98,7 @@ void init_cmd()
 {
 	cmd_command[0] = '\0';
 	setColor (0x07);
+	puts ("MyDOS v. 0.1\n");
 	CMD_ACTIVE = TRUE;
 }
 
@@ -109,11 +115,11 @@ void cmd_read (int sec, int num)
 	if (sector!=0) {
 
 		int i = 0;
-		for ( int c = 0; c < 4*num; c++ ) {
+		for ( int c = 0; c < num; c++ ) {
 
-			for (int j = 0; j < 128; j++)
+			for (int j = 0; j < 512; j++)
 				printf ("%x ", sector[ i + j ]);
-			i += 128;
+			i += 512;
 		}
 	}
 	else
@@ -148,7 +154,8 @@ void cat(char* path)
 			putch (buf[i]);
 		//! wait for input to continue if not EOF
 		if (file.eof != 1) {
-			getch ("\n\r------[Press a key to continue]------");
+			char gethc = getch ("\n\r------[Press a key to continue]------");
+			if (gethc == 'q') return;
 			printf ("\r"); //clear last line
 		}
 	}

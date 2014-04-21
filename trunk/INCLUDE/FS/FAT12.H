@@ -35,7 +35,14 @@
 		uint32_t fatEntrySize;
 
 	}MOUNT_INFO, *PMOUNT_INFO;
-
+	
+	typedef struct _ROOTDIRECTORY {
+		PDIRECTORY entry[224];
+	}RDIR, *PRDIR ;
+	typedef struct _ROOTDIRECTORYS {
+		DIRECTORY entry[224];
+	}RDIRS, *PRDIRS ;
+void dirTest(void);
 	FILE fsysFatDirectory (const char* DirectoryName);
 	void fsysFatRead(PFILE file, unsigned char* Buffer, unsigned int Length);
 	FILE fsysFatOpen (const char* FileName);
