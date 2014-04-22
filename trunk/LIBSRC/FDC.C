@@ -211,7 +211,10 @@ bool floppy_changed()
 void floppy_motor(bool on)
 {
 	if (debug) printf ("Motor = %i\n", on);
-	if(on) DOR_write (0x0C | floppy_drive_number  | FLOPPY_MOTOR_LIST[floppy_drive_number]);
+	if(on) {
+		DOR_write (0x0C | floppy_drive_number  | FLOPPY_MOTOR_LIST[floppy_drive_number]);
+		sleep(1);
+	}
 	else DOR_write (0x0C | floppy_drive_number);
 	timer_wait(5);
 }
@@ -237,12 +240,12 @@ void fdc_quickReset()
 	uint32_t st0, cyl0;
 	fdc_disable();
 	fdc_enable();
-	if (floppy_waitIRQ()) {
-		floppy_IRQ_handle (&st0,&cyl0);
-		floppy_IRQ_handle (&st0,&cyl0);
-		floppy_IRQ_handle (&st0,&cyl0);
-		floppy_IRQ_handle (&st0,&cyl0);
-	} else floppy_reset();
+	if(floppy_waitIRQ ()) {
+		for (int i=0; i<4; i++) {
+			floppy_IRQ_handle (&st0,&cyl0);
+		}
+	}
+	floppy_calibrate();
 }
 void fdc_enable()
 {
@@ -347,11 +350,11 @@ int floppy_calibrate()
 		else
 		{
 			if (debug) puts ("No IRQ\n");
-			floppy_reset();
+			///floppy_reset();
 		}
 	}
 	if (debug) puts ("NOT Calibrated!\n");
-	//floppy_motor (false);
+	floppy_motor (false);
 	return -1;
 }
 
@@ -384,11 +387,11 @@ if (debug) printf ("floppy_readSector_imp(%x, %x, %x, %x)\n", head, track, secto
 		// let FDC know we handled interrupt
 		floppy_IRQ_handle (&st0,&cyl);
 	} else {
-		//floppy_reset();
+		floppy_reset();
 		//floppy_readSector_imp (head, track, sector, sectors);
 	}
 }
-int tries = 4;
+int tries;
 bool floppy_seek ( uint8_t cyl, uint8_t head )
 {
 	tries = 4;
@@ -412,8 +415,8 @@ bool floppy_seek ( uint8_t cyl, uint8_t head )
 			} else {
 				floppy_reset();
 				tries--;
-				if(tries) floppy_seek ( cyl, head );
-				else return false;
+				floppy_motor(1);
+				if(!tries) return false;
 			}
 		}
 	}
@@ -428,13 +431,13 @@ if (debug) printf ("floppy_readSector(%x, %x)\n", sectorLBA, sectors);
 	floppy_set_dma(0x3500);
 //	floppy_reset();
 	fdc_quickReset();
+	floppy_motor (true);
 	if (floppy_drive_number >= 2)
 		return 0;
 	// convert LBA sector to CHS
 	int head=0, track=0, sector=1;
 	lbaCHS (sectorLBA, &head, &track, &sector);
 	// turn motor on and seek to track
-	floppy_motor (true);
 	if (!floppy_seek ((uint8_t)track, (uint8_t)head)) {
 		puts("Did not seek properly!\n");
 		return 0;

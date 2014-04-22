@@ -31,6 +31,7 @@ int main()
 	vmmngr_initialize ();
 	__asm__ __volatile__ ("sti");					//DON'T FROGET TO RE-ENABLE INTS OR NOTHING WILL WORK RIGHT!!!!
 	floppy_install	();
+	floppy_readSector(0,1);
 	fsysFatInitialize ();
 	
 	//printf ("textTOhex() test: 07 = %i && CF = %i", textTOhex("07"), textTOhex("CF"));

@@ -159,11 +159,11 @@ void cat(char* path)
 		for (int i=0; i<512; i++)
 			putch (buf[i]);
 		//! wait for input to continue if not EOF
-		if (file.eof != 1) {
-			char gethc = getch ("\n\r------[Press a key to continue]------");
-			if (gethc == 'q') return;
-			printf ("\r"); //clear last line
-		}
+		//if (file.eof != 1) {
+			//char gethc = getch ("\n\r------[Press a key to continue]------");
+			//if (gethc == 'q') return;
+			//printf ("\r"); //clear last line
+		//}
 	}
 	//! done :)
 	printf ("\n\n\r--------[EOF]--------\n");
