@@ -214,11 +214,10 @@ bool floppy_changed()
 void floppy_motor(bool on)
 {
 	if (debug) printf ("Motor = %i\n", on);
-	if(on) {
+	if(on)
 		DOR_write (0x0C | floppy_drive_number  | FLOPPY_MOTOR_LIST[floppy_drive_number]);
-		sleep(1);
-	}
-	else DOR_write (0x0C | floppy_drive_number);
+	else
+		DOR_write (0x0C | floppy_drive_number);
 	timer_wait(5);
 }
 void floppy_speed(int speed) //0=500KB\s 1=300KB\s 2=250KB\s 3=1MB\s

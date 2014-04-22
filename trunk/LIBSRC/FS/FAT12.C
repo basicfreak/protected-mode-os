@@ -291,7 +291,7 @@ void fsysFatInitialize ()
 	_FSysFat.Close     = fsysFatClose;
 	// register ourself to volume manager
 	VFS_RegisterFileSystem ( &_FSysFat, 0 );
-	// mounr filesystem
+	// mount filesystem
 	fsysFatMount ();
 	FATBlock_init();
 	ROOTdir_init();
