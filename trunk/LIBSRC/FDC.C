@@ -11,6 +11,9 @@
 
 #define debug 0
 
+int tries;
+uint16_t _currentCylinder;
+
 void floppy_dma_read ( int addr );
 void floppy_dma_write (void);
 uint8_t FIFO_read(void);
@@ -341,6 +344,7 @@ int floppy_calibrate()
 		// did we fine cylinder 0? if so, we are done
 			if (!cyl)
 			{
+				_currentCylinder = cyl;
 				if (debug) puts("Calibrated\n");
 				floppy_motor (false);
 				return 0;
@@ -350,7 +354,7 @@ int floppy_calibrate()
 		else
 		{
 			if (debug) puts ("No IRQ\n");
-			///floppy_reset();
+			fdc_quickReset();
 		}
 	}
 	if (debug) puts ("NOT Calibrated!\n");
@@ -387,11 +391,13 @@ if (debug) printf ("floppy_readSector_imp(%x, %x, %x, %x)\n", head, track, secto
 		// let FDC know we handled interrupt
 		floppy_IRQ_handle (&st0,&cyl);
 	} else {
-		floppy_reset();
-		//floppy_readSector_imp (head, track, sector, sectors);
+		fdc_quickReset();
+		tries--;
+		floppy_motor(1);
+		if(tries) floppy_readSector_imp (head, track, sector, sectors);
 	}
 }
-int tries;
+
 bool floppy_seek ( uint8_t cyl, uint8_t head )
 {
 	tries = 4;
@@ -411,9 +417,10 @@ bool floppy_seek ( uint8_t cyl, uint8_t head )
 				floppy_IRQ_handle (&st0,&cyl0);
 				// found the cylinder?
 				if ( cyl0 == cyl)
+					_currentCylinder = cyl0;
 					return true;
 			} else {
-				floppy_reset();
+				fdc_quickReset();
 				tries--;
 				floppy_motor(1);
 				if(!tries) return false;
@@ -430,7 +437,6 @@ uint8_t* floppy_readSector (int sectorLBA, uint8_t sectors)
 if (debug) printf ("floppy_readSector(%x, %x)\n", sectorLBA, sectors);
 	floppy_set_dma(0x3500);
 //	floppy_reset();
-	fdc_quickReset();
 	floppy_motor (true);
 	if (floppy_drive_number >= 2)
 		return 0;
@@ -438,11 +444,13 @@ if (debug) printf ("floppy_readSector(%x, %x)\n", sectorLBA, sectors);
 	int head=0, track=0, sector=1;
 	lbaCHS (sectorLBA, &head, &track, &sector);
 	// turn motor on and seek to track
-	if (!floppy_seek ((uint8_t)track, (uint8_t)head)) {
-		puts("Did not seek properly!\n");
-		return 0;
-	}
+	if (_currentCylinder != (uint16_t) track)
+		if(!floppy_seek ((uint8_t)track, (uint8_t)head)) {
+			puts("Did not seek properly!\n");
+			return 0;
+		}
 	// read sector and turn motor off
+	tries = 4;
 	floppy_readSector_imp ((uint8_t)head, (uint8_t)track, (uint8_t)sector, sectors);
 	floppy_motor (false);
 	// warning: this is a bit hackish
