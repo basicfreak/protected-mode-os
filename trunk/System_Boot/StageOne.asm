@@ -77,8 +77,6 @@ jumpTime:
 	push	WORD 0x0BE0
 	push	WORD 0x0000
 	retf
-	;mov bx, 0x4200
-	;jmp [es:bx]
 	jmp		ErrorSub
 ;----------------------------------------------------
 ; Drivers
@@ -91,7 +89,7 @@ jumpTime:
 ; Variables
 ;----------------------------------------------------
 ImageName	db "STAGETWOBIN"
-BOOTMSG		db "Loading Stage Two...", 0
+BOOTMSG		db "Loading Stage Two... ", 0
 ERRMSG		db "ERROR!", 0
 DONEMSG		db "Done!", 0
 bootdevice	db 0

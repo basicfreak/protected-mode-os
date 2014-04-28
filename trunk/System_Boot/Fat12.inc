@@ -29,9 +29,9 @@ initFAT12:
 ; input word[cluster] = current cluster
 ; output word[cluster] = next cluster	
 nextCluster:
-	push	ax
-	push	cx							; store registers
-	push	dx
+	;push	ax
+	;push	cx							; store registers
+	;push	dx
 	push	bx
 	mov     ax, WORD [cluster]	; identify current cluster
 	mov     cx, ax			; copy current cluster
@@ -40,7 +40,7 @@ nextCluster:
 	add     cx, dx			; sum for (3/2)
 	mov		bx, 0x200			; FAT offset
 	add		bx, cx
-	mov		dx, WORD [bx]
+	mov		dx, WORD [es:bx]
 	test	ax, 0x0001		; test for odd or even cluster
 	jnz		.ODD_CLUSTER
 	.EVEN_CLUSTER:
@@ -51,9 +51,9 @@ nextCluster:
 	.DONE:
 		mov		WORD [cluster], dx
 	pop	bx						; restore registers and return
-	pop	dx
-	pop	cx
-	pop ax
+	;pop	dx
+	;pop	cx
+	;pop ax
 	ret
 	
 ; Due to limited space lets make this an all in one finder and loader.
@@ -104,12 +104,16 @@ FindFile:
 	push	dx
 	
 	.ReadLoopMe:
+		mov		si, dotMSG
+		call	puts
+		
 		mov 	ax, WORD [cluster]			; cluster number
 		add		ax, 31						; sector offset
 		mov		cx, 1						; read one sector
+		push bx
 		call	ReadSectors					; read
-		call	nextCluster					; get next cluster
-		
+		call	nextCluster					; get next cluster		
+		pop bx
 		add		bx, 0x200					; add 512 bytes to buffer location
 		mov		ax, WORD [cluster]
 		cmp		ax, 0xff8
@@ -119,6 +123,7 @@ FindFile:
 	mov	ax, 1
 	ret
 
+	dotMSG db ".", 0
 %endif		;__FAT12_INC__INCLUDED__
 
 
