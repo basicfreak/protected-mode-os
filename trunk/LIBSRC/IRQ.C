@@ -5,6 +5,7 @@
 #include <IRQ.H>
 #include <IDT.H>
 #include <STDIO.H>
+#include <MEM/PAGEFAULT.H>
 
 void *irq_routines[16] =
 {
@@ -206,10 +207,10 @@ char *exception_messages[] =
 *  happening and messing up kernel data structures */
 void fault_handler(struct regs *r)
 {
-    if (r->int_no < 32)
-    {
+	if (r->int_no == 14)
+		pageFault_handler(r);
+    else if (r->int_no < 32)
 		iError		(exception_messages[r->int_no]);
-    }
 }
 
 void iError(char *Reason)						//Reason is Exception Name

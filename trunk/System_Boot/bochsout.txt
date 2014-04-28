@@ -42,7 +42,7 @@
 00000000000i[DEV  ] PIIX3 PCI-to-ISA bridge present at device 1, function 0
 00000000000i[     ] init_dev of 'cmos' plugin device by virtual method
 00000000000i[CMOS ] Using local time for initial clock
-00000000000i[CMOS ] Setting initial clock to: Sat Apr 26 00:59:25 2014 (time0=1398491965)
+00000000000i[CMOS ] Setting initial clock to: Mon Apr 28 16:40:53 2014 (time0=1398721253)
 00000000000i[     ] init_dev of 'dma' plugin device by virtual method
 00000000000i[DMA  ] channel 4 used by cascade
 00000000000i[     ] init_dev of 'pic' plugin device by virtual method
@@ -193,26 +193,26 @@
 00002419666i[BXVGA] VBE known Display Interface b0c5
 00002422592i[VBIOS] VBE Bios $Id: vbe.c,v 1.64 2011/07/19 18:25:05 vruppert Exp $
 00014919119i[BIOS ] Booting from 0000:7c00
-00014933240i[CPU0 ] WARNING: HLT instruction with IF=0!
-00035268000p[WGUI ] >>PANIC<< POWER button turned off.
-00035268000i[CPU0 ] CPU is in real mode (halted)
-00035268000i[CPU0 ] CS.mode = 16 bit
-00035268000i[CPU0 ] SS.mode = 16 bit
-00035268000i[CPU0 ] EFER   = 0x00000000
-00035268000i[CPU0 ] | EAX=00000000  EBX=00000000  ECX=00090000  EDX=00000000
-00035268000i[CPU0 ] | ESP=0000ffff  EBP=00000000  ESI=000e00e2  EDI=0000ffac
-00035268000i[CPU0 ] | IOPL=0 id vip vif ac vm rf nt of df if tf sf ZF af PF cf
-00035268000i[CPU0 ] | SEG sltr(index|ti|rpl)     base    limit G D
-00035268000i[CPU0 ] |  CS:0000( 0004| 0|  0) 00000000 0000ffff 0 0
-00035268000i[CPU0 ] |  DS:07c0( 0005| 0|  0) 00007c00 0000ffff 0 0
-00035268000i[CPU0 ] |  SS:0000( 0005| 0|  0) 00000000 0000ffff 0 0
-00035268000i[CPU0 ] |  ES:07c0( 0005| 0|  0) 00007c00 0000ffff 0 0
-00035268000i[CPU0 ] |  FS:07c0( 0005| 0|  0) 00007c00 0000ffff 0 0
-00035268000i[CPU0 ] |  GS:07c0( 0005| 0|  0) 00007c00 0000ffff 0 0
-00035268000i[CPU0 ] | EIP=00007c5f (00007c5f)
-00035268000i[CPU0 ] | CR0=0x60000010 CR2=0x00000000
-00035268000i[CPU0 ] | CR3=0x00000000 CR4=0x00000000
-00035268000i[CPU0 ] 0x0000000000007c5f>> add byte ptr ds:[bx+si], al : 0000
-00035268000i[CMOS ] Last time is 1398491973 (Sat Apr 26 00:59:33 2014)
-00035268000i[     ] restoring default signal behavior
-00035268000i[CTRL ] quit_sim called with exit code 1
+00016590801i[CPU0 ] WARNING: HLT instruction with IF=0!
+00032804000p[WGUI ] >>PANIC<< POWER button turned off.
+00032804000i[CPU0 ] CPU is in real mode (halted)
+00032804000i[CPU0 ] CS.mode = 16 bit
+00032804000i[CPU0 ] SS.mode = 16 bit
+00032804000i[CPU0 ] EFER   = 0x00000000
+00032804000i[CPU0 ] | EAX=00000500  EBX=00005200  ECX=00090000  EDX=00000100
+00032804000i[CPU0 ] | ESP=00002000  EBP=00000000  ESI=000e0200  EDI=00000005
+00032804000i[CPU0 ] | IOPL=0 id vip vif ac vm rf nt of df if tf sf ZF af PF cf
+00032804000i[CPU0 ] | SEG sltr(index|ti|rpl)     base    limit G D
+00032804000i[CPU0 ] |  CS:0be0( 0004| 0|  0) 0000be00 0000ffff 0 0
+00032804000i[CPU0 ] |  DS:0be0( 0005| 0|  0) 0000be00 0000ffff 0 0
+00032804000i[CPU0 ] |  SS:0500( 0005| 0|  0) 00005000 0000ffff 0 0
+00032804000i[CPU0 ] |  ES:0be0( 0005| 0|  0) 0000be00 0000ffff 0 0
+00032804000i[CPU0 ] |  FS:0be0( 0005| 0|  0) 0000be00 0000ffff 0 0
+00032804000i[CPU0 ] |  GS:0be0( 0005| 0|  0) 0000be00 0000ffff 0 0
+00032804000i[CPU0 ] | EIP=0000006b (0000006b)
+00032804000i[CPU0 ] | CR0=0x60000010 CR2=0x00000000
+00032804000i[CPU0 ] | CR3=0x00000000 CR4=0x00000000
+00032804000i[CPU0 ] 0x000000000000006b>> add byte ptr ds:[bx+si], al : 0000
+00032804000i[CMOS ] Last time is 1398721261 (Mon Apr 28 16:41:01 2014)
+00032804000i[     ] restoring default signal behavior
+00032804000i[CTRL ] quit_sim called with exit code 1

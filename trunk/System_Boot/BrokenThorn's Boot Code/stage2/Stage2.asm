@@ -12,7 +12,7 @@ bits	16
 ; Remember the memory map-- 0x500 through 0x7bff is unused above the BIOS data area.
 ; We are loaded at 0x500 (0x50:0)
 
-org 0x500
+org 0
 
 jmp	main				; go to start
 
@@ -48,13 +48,19 @@ main:
 	;   Setup segments and stack	;
 	;-------------------------------;
 
-	cli				; clear interrupts
-	xor	ax, ax			; null segments
-	mov	ds, ax
-	mov	es, ax
-	mov	ax, 0x0			; stack begins at 0x9000-0xffff
-	mov	ss, ax
-	mov	sp, 0xFFFF
+	cli
+    mov     ax, 0x0BE0
+    mov     ds, ax
+    mov     es, ax
+    mov     fs, ax
+    mov     gs, ax
+	
+    ;----------------------------------------------------
+    ; create stack
+    ;---------------------------------------------------- 
+    mov     ax, 0x500
+    mov     ss, ax
+    mov     sp, 0x2000
 	sti				; enable interrupts
 
 	;-------------------------------;

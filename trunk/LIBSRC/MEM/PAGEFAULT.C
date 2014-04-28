@@ -6,10 +6,11 @@ IRQ 14
 
 #include <MEM/PAGEFAULT.H>
 #include <IRQ.H>
+#include <STDIO.H>
 
 void pageFault_handler(struct regs *r)
 {
-	for(;;);
+	getch("Page Fault");
 }
 
 void init_pageFault()

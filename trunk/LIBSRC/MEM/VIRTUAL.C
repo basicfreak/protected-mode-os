@@ -48,60 +48,61 @@ void MmMapPage (void* phys, void* virt)
 void vmmngr_initialize ()
 {
 	//allocate default page table
-   struct ptable* table = (struct ptable*) pmmngr_alloc_block ();
-   if (!table)
-      return;
+	struct ptable* table = (struct ptable*) pmmngr_alloc_block ();
+	if (!table)
+	  return;
 
-   //allocates 3gb page table
-   struct ptable* table2 = (struct ptable*) pmmngr_alloc_block ();
-   if (!table2)
-      return;
+	//allocates 3gb page table
+	struct ptable* table2 = (struct ptable*) pmmngr_alloc_block ();
+	if (!table2)
+	  return;
 
-   // clear page table
-   memset (table, 0, sizeof (struct ptable));
+	// clear page table
+	memset (table, 0, sizeof (struct ptable));
 
-   // 1st 8mb are idenitity mapped
-   for (int i=0, frame=0x0, virt=0x00000000; i<1024; i++, frame+=4096, virt+=4096) {
+	// 1st 8mb are idenitity mapped 1-4MB kernel space 4-8mb user space
+	for (int i=0, frame=0x0, virt=0x00000000; i<1024; i++, frame+=4096, virt+=4096) {
 		pt_entry page=0;
 		pt_entry_add_attrib (&page, I86_PTE_PRESENT);
 		pt_entry_set_frame (&page, frame);
 		table2->m_entries [PAGE_TABLE_INDEX (virt) ] = page;
-   }
-   /// map 1mb to 3gb To test MMU
-   for (int i=0, frame=0x400000, virt=0x400000; i<1024; i++, frame+=4096, virt+=4096) {
+	}
+	for (int i=0, frame=0x400000, virt=0x400000; i<1024; i++, frame+=4096, virt+=4096) {
 		pt_entry page=0;
 		pt_entry_add_attrib (&page, I86_PTE_PRESENT);
+		pt_entry_add_attrib (&page, I86_PTE_USER);
 		pt_entry_set_frame (&page, frame);
 		table->m_entries [PAGE_TABLE_INDEX (virt) ] = page;
-   }
+	}
 
-   // create default directory table
-   struct pdirectory*   dir = (struct pdirectory*) pmmngr_alloc_blocks (3);
-   if (!dir)
-      return;
+	// create default directory table
+	struct pdirectory*   dir = (struct pdirectory*) pmmngr_alloc_blocks (3);
+	if (!dir)
+		return;
 
-  // clear directory table and set it as current
-  memset (dir, 0, sizeof (struct pdirectory));
+	// clear directory table and set it as current
+	memset (dir, 0, sizeof (struct pdirectory));
 
-   // get first entry in dir table and set it up to point to our table
-   pd_entry* entry = &dir->m_entries [PAGE_DIRECTORY_INDEX (0x400000) ];
-   pd_entry_add_attrib (entry, I86_PDE_PRESENT);
-   pd_entry_add_attrib (entry, I86_PDE_WRITABLE);
-   pd_entry_set_frame (entry, (physical_addr)table);
-   
-   pd_entry* entry2 = &dir->m_entries [PAGE_DIRECTORY_INDEX (0x0) ];
-   pd_entry_add_attrib (entry2, I86_PDE_PRESENT);
-   pd_entry_add_attrib (entry2, I86_PDE_WRITABLE);
-   pd_entry_set_frame (entry2, (physical_addr)table2);
+	// get first entry in dir table and set it up to point to our table
+	pd_entry* entry = &dir->m_entries [PAGE_DIRECTORY_INDEX (0x400000) ];
+	pd_entry_add_attrib (entry, I86_PDE_PRESENT);
+	pd_entry_add_attrib (entry, I86_PDE_WRITABLE);
+	pt_entry_add_attrib (entry, I86_PDE_USER);
+	pd_entry_set_frame (entry, (physical_addr)table);
 
-   // store current PDBR
-   _cur_pdbr = (physical_addr) &dir->m_entries;
+	pd_entry* entry2 = &dir->m_entries [PAGE_DIRECTORY_INDEX (0x0) ];
+	pd_entry_add_attrib (entry2, I86_PDE_PRESENT);
+	pd_entry_add_attrib (entry2, I86_PDE_WRITABLE);
+	pd_entry_set_frame (entry2, (physical_addr)table2);
 
-   // switch to our page directory
-   vmmngr_switch_pdirectory (dir);
+	// store current PDBR
+	_cur_pdbr = (physical_addr) &dir->m_entries;
 
-   // enable paging
-   pmmngr_paging_enable (true);
+	// switch to our page directory
+	vmmngr_switch_pdirectory (dir);
+
+	// enable paging
+	pmmngr_paging_enable (true);
 }
 
 bool vmmngr_alloc_page (pt_entry* e)

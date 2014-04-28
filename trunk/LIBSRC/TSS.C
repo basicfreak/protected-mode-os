@@ -10,10 +10,6 @@ static struct tss_entry TSS;
 
 void flush_tss (uint16_t sel)
 {
-	/*__asm__ __volatile__ ("cli");
-	__asm__ __volatile__ ("mov $0x2B, %eax");
-	__asm__ __volatile__ ("ltr %eax");
-	__asm__ __volatile__ ("sti");*/
 	__asm__ __volatile__ ("ltr %0"::"r" (sel));
 }
 
