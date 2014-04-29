@@ -1,5 +1,5 @@
 [bits 16]
-[org 0]
+[org 0xBE00]
 
 jmp short startup
 nop
@@ -31,8 +31,8 @@ startup:
     ;----------------------------------------------------
     ; Pointer Setup (STAGEONE loads us to 0xBE00)
     ;---------------------------------------------------- 
-    cli
-    mov     ax, 0x0BE0
+	cli
+    xor     ax, ax
     mov     ds, ax
     mov     es, ax
     mov     fs, ax
@@ -41,9 +41,9 @@ startup:
     ;----------------------------------------------------
     ; create stack
     ;---------------------------------------------------- 
-    mov     ax, 0x500
+    mov     ax, 0x9000
     mov     ss, ax
-    mov     sp, 0x2000
+    mov     sp, 0xFFFF
 	sti
     
     mov  [bootdevice], dl
@@ -68,8 +68,6 @@ startup:
     ; End - Error Has Occurred...
     ;----------------------------------------------------
 ErrorSub:
-	mov		ax, 0x0BE0							; Point ES back to 0x0BE0
-	mov		es, ax	
 	mov		si, ERRMSG
 	call	puts
     cli
@@ -103,8 +101,9 @@ TimeToGO:
 	
 goPMode:
 	cli
-	mov		eax, cr0				; set bit 0 in cr0--enter pmode
-	or		eax, 1
+	;lgdt 	[toc]
+	mov		eax, cr0
+	or		al, 1
 	mov		cr0, eax
 	jmp		0x8:inPMode				; Jump To 32-bit code
 	
@@ -139,35 +138,36 @@ ImageSize	db 0
 [bits 32]
 
 inPMode:
-	mov	ax, 0x10
-	mov	ds, ax
-	mov	ss, ax
-	mov	es, ax
-	mov	esp, 90000h
+	mov		ax, 0x10					; set data segments to data selector (0x10)
+	mov		ds, ax
+	mov		ss, ax
+	mov		es, ax
+	mov		esp, 0x90000					; stack begins from 90000h
+	sti
 
 	mov		ebx, DONEMSG
 	call	print
 	
-CopyImage:
-	mov		ebx, CopyMSG
-	call	print
+;CopyImage:
+	;mov		ebx, CopyMSG
+	;call	print
 	
-	mov	eax, dword [ImageSize]
-	movzx	ebx, word [bpbBytesPerSector]
-	mul	ebx
-	mov	ebx, 4
-	div	ebx
-	cld
-	mov    esi, 0xCC00
-	mov	edi, 0x300000
-	mov	ecx, eax
-	rep	movsd
+	;mov	eax, dword [ImageSize]
+	;movzx	ebx, word [bpbBytesPerSector]
+	;mul	ebx
+	;mov	ebx, 4
+	;div	ebx
+	;cld
+	;mov    esi, 0xCC00
+	;mov	edi, 0x300000
+	;mov	ecx, eax
+	;rep	movsd
 	
-	mov		ebx, DONEMSG
-	call	print
-	mov		ebx, LaunchMSG
-	call	print
+	;mov		ebx, DONEMSG
+	;call	print
+	;mov		ebx, LaunchMSG
+	;call	print
 	
-	jmp	0x8:0x300000
+	;jmp	0x8:0x300000
 	cli
 	hlt
