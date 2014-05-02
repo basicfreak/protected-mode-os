@@ -14,11 +14,14 @@
 	int					ROWS;
 	int					color;
 	int					movcur_disable;
+	int					scroll_disable;
 	
 	char getch(char *msg);
 	void gets(char out[1024], char *msg);
 	
 	void				initVideo(void);
+	uint8_t				getColorOf(uint8_t x, uint8_t Y);
+	uint8_t				getCharOf(uint8_t x, uint8_t Y);
 	void				puts(char *message);
 	void				printf(char *message, ...);
 	void				printfc(int cSet, char *message, ...);

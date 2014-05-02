@@ -1,6 +1,22 @@
 %ifndef __STDIO_32_INC__INCLUDED__
 %define __STDIO_32_INC__INCLUDED__
 
+[bits 16]
+setupVideoPOS:
+	push	ax
+	push	bx
+	push	dx
+	mov 	ah, 3
+	xor 	bx, bx
+	int 	0x10
+	mov 	BYTE [_CurX], dl
+	mov 	BYTE [_CurY], dh
+	pop 	dx
+	pop 	bx
+	pop		ax
+	ret
+
+
 [bits 32]
 %define		VIDMEM	0xB8000
 %define		COLS	80
@@ -64,8 +80,14 @@ putch:
 .Cret:
 	mov byte [_CurX], 0
 	jmp .done
+.scroll:					; Not really a scroll more like start from top of screen...
+	mov byte [_CurY], 0
 .done:
+	cmp byte [_CurY], LINES
+	jge	.scroll
 	popa				; restore registers and return
 	ret
+	
+	
 	
 %endif	;__STDIO_32_INC__INCLUDED__

@@ -19,4 +19,4 @@ boot: a
 log: bochsout.txt
 
 # disable the mouse unless your OS uses it
-mouse: enabled=0
+mouse: enabled=1

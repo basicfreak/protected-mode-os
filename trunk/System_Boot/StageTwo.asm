@@ -41,9 +41,9 @@ startup:
     ;----------------------------------------------------
     ; create stack
     ;---------------------------------------------------- 
-    mov     ax, 0x9000
+    mov     ax, 0x500
     mov     ss, ax
-    mov     sp, 0xFFFF
+    mov     sp, 0x2000
 	sti
     
     mov  [bootdevice], dl
@@ -53,6 +53,7 @@ startup:
     ;----------------------------------------------------
 	mov		si, BOOTMSG
 	call	puts
+	
 	;call	initFAT12							; should be initialized already
 	mov		ax, 0x07C0							; all data offset is from 0x7C00
 	mov		es, ax								; Select Segment 0x07C0
@@ -61,6 +62,9 @@ startup:
 	push    bx
 	mov		si, ImageName
 	call	FindFile
+	
+	mov		dword [ImageSize], ecx
+	
 	cmp		ax, 1
 	je		TimeToGO
 	
@@ -85,23 +89,28 @@ TimeToGO:
 	;----------------------------------------------------
 	mov		si, GDTMSG
 	call	puts
+	
 	call	initGDT					; Install GDT
+	
 	mov		si, DONEMSG
 	call	puts
 	mov		si, A20MSG
 	call	puts
+	
 	call	EnableA20				; Enable A20
+	
 	mov		si, DONEMSG
 	call	puts
 	mov		si, PModeMSG
 	call	puts
+	
+	call	setupVideoPOS
 	jmp		goPMode					; Enable PMode
 	
 	jmp		ErrorSub
 	
 goPMode:
 	cli
-	;lgdt 	[toc]
 	mov		eax, cr0
 	or		al, 1
 	mov		cr0, eax
@@ -120,17 +129,18 @@ goPMode:
 ;----------------------------------------------------
 ; Variables
 ;----------------------------------------------------
-ImageName	db "STAGE3  BIN"
-BOOTMSG		db 0xA, 0xD, "Loading Stage Three... ", 0
+ImageName	db "KERNEL  BIN"
+BOOTMSG		db 0xA, 0xD, "Preloading Kernel... ", 0
 A20MSG		db "Enableing A20...", 0
 PModeMSG	db "Enableing Protected Mode...", 0
 GDTMSG		db "Setting up GDT...", 0
-CopyMSG		db "Coppying Stage Three...", 0
-LaunchMSG	db "Launching Stage Three...", 0
+CopyMSG		db "Coppying Kernel...", 0
+LaunchMSG	db "Launching Kernel...", 0
 ERRMSG		db "ERROR!",0xA, 0xD, 0
 DONEMSG		db "Done!", 0xA, 0xD, 0
 bootdevice	db 0
-ImageSize	db 0
+ImageSize	dd 0
+db 0
 
 ;----------------------------------------------------
 ; Protected Mode
@@ -144,30 +154,42 @@ inPMode:
 	mov		es, ax
 	mov		esp, 0x90000					; stack begins from 90000h
 	sti
-
+	
 	mov		ebx, DONEMSG
 	call	print
+	mov		ebx, CopyMSG
+	call	print
 	
-;CopyImage:
-	;mov		ebx, CopyMSG
-	;call	print
+	;mov 	esi, 0xCC00
+	;mov		edi, 0x100000
+	;call	CopyImage
 	
-	;mov	eax, dword [ImageSize]
-	;movzx	ebx, word [bpbBytesPerSector]
-	;mul	ebx
-	;mov	ebx, 4
-	;div	ebx
-	;cld
-	;mov    esi, 0xCC00
-	;mov	edi, 0x300000
-	;mov	ecx, eax
-	;rep	movsd
+	mov		ebx, ERRMSG
+	call	print
+	mov		ebx, LaunchMSG
+	call	print
 	
-	;mov		ebx, DONEMSG
-	;call	print
-	;mov		ebx, LaunchMSG
-	;call	print
+	jmp		0x8:0xCC00
+
+; ESI => FROM MEMROY ADDRESS
+; EDI => TO MEMORY ADDRESS
+CopyImage:
+	mov		eax, dword [ImageSize]
+	cmp		eax, 0
+	jle 		ErrorSubPMode
+	movzx	ebx, word [bpbBytesPerSector]
+	mul		ebx
+	mov		ebx, 4
+	div		ebx
+	cld
+	;mov 	esi, 0xCC00
+	;mov		edi, 0x100000
+	mov		ecx, eax
+	rep		movsd
+	ret
 	
-	;jmp	0x8:0x300000
+ErrorSubPMode:
+	mov		ebx, ERRMSG
+	call	print
 	cli
 	hlt

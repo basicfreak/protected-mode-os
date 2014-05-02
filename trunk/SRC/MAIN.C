@@ -9,6 +9,7 @@
 #include <TIMER.H>
 #include <CMOS.H>
 #include <KEYBOARD.H>
+#include <PS2.H>
 #include <FDC.H>
 #include <MEM/PHYSICAL.H>
 #include <MEM/VIRTUAL.H>
@@ -25,14 +26,15 @@ int main()
 	initVideo		();
 	readCMOS		();
 	install_keyboard();
+	init_PS2		();
     timer_install	();
 	initPHYSMEM();
 	init_pageFault();
 	vmmngr_initialize ();
 	__asm__ __volatile__ ("sti");					//DON'T FROGET TO RE-ENABLE INTS OR NOTHING WILL WORK RIGHT!!!!
 	floppy_install	();
-	floppy_readSector(0,1);
-	fsysFatInitialize ();
+	//floppy_readSector(0,1);
+	//fsysFatInitialize ();
 	
 	//printf ("textTOhex() test: 07 = %i && CF = %i", textTOhex("07"), textTOhex("CF"));
 	

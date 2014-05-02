@@ -20,10 +20,12 @@ bits	16
 ; Plan to include this file on stage two (shouldn't need to call init then)
 ; Not even sure if we can read 32 sectors at once...
 initFAT12:
+	pusha
 	mov cx, 32
 	mov ax, 1
 	mov bx, 0x200
 	call ReadSectors
+	popa
 	ret
 
 ; input word[cluster] = current cluster
@@ -32,7 +34,8 @@ nextCluster:
 	;push	ax
 	;push	cx							; store registers
 	;push	dx
-	push	bx
+	;push	bx
+	pusha
 	mov     ax, WORD [cluster]	; identify current cluster
 	mov     cx, ax			; copy current cluster
 	mov     dx, ax
@@ -50,10 +53,11 @@ nextCluster:
 		shr		dx, 0x0004		; take high 12 bits
 	.DONE:
 		mov		WORD [cluster], dx
-	pop	bx						; restore registers and return
+	;pop	bx						; restore registers and return
 	;pop	dx
 	;pop	cx
 	;pop ax
+	popa
 	ret
 	
 ; Due to limited space lets make this an all in one finder and loader.
@@ -61,7 +65,8 @@ nextCluster:
 ; input ES:BX => Buffer
 ;
 ; return AX = -1 on error
-FindFile:
+; return ecx = file size in clusters
+FindFile:	
 	push	cx							; store registers
 	push	dx
 	push	bx
@@ -84,6 +89,9 @@ FindFile:
 		pop	bx						; restore registers and return
 		pop	dx
 		pop	cx
+		
+		pop	ecx
+		
 		mov	ax, -1						; set error code
 		ret
 	.FOUND:
@@ -94,32 +102,37 @@ FindFile:
 		pop	dx
 		pop	cx
 ; Found file lets load it. (hopefully root offset is in ax.)
-	;************************************************;
-	; Reads a series of sectors
-	; CX=>Number of sectors to read
-	; AX=>Starting sector
-	; ES:BX=>Buffer to read to
-	;************************************************;
 	push	cx							; store registers
 	push	dx
+	
+	xor	ecx, ecx		; size of file in sectors
+	push	ecx
 	
 	.ReadLoopMe:
 		mov		si, dotMSG
 		call	puts
-		
 		mov 	ax, WORD [cluster]			; cluster number
 		add		ax, 31						; sector offset
 		mov		cx, 1						; read one sector
-		push bx
+		push 	bx
 		call	ReadSectors					; read
 		call	nextCluster					; get next cluster		
-		pop bx
+		pop		bx
 		add		bx, 0x200					; add 512 bytes to buffer location
 		mov		ax, WORD [cluster]
+		
+		pop		ecx
+		inc		ecx			; add one more sector to counter
+		push	ecx
+		
+		
 		cmp		ax, 0xff8
 		jl		.ReadLoopMe
 	pop	dx
 	pop	cx
+	
+	pop ecx
+	
 	mov	ax, 1
 	ret
 

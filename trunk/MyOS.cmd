@@ -34,6 +34,8 @@
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/IRQ.O ./LIBSRC/IRQ.c
 		@ECHO KEYBOARD.C
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/KEYBOARD.O ./LIBSRC/KEYBOARD.c
+		@ECHO PS2.C
+		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/PS2.O ./LIBSRC/PS2.c
 		@ECHO MATH.C
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/MATH.O ./LIBSRC/MATH.c
 		@ECHO STDIO.C
@@ -47,7 +49,7 @@
 		@ECHO lib.a
 		ar rvs ./LIB/lib.a ./OBJ/CMOS.O ./OBJ/GDT.O ./OBJ/IDT.O ./OBJ/IRQ.O ./OBJ/KEYBOARD.O
 		ar rvs ./LIB/lib.a ./OBJ/TIMER.O ./OBJ/MATH.O ./OBJ/STDIO.O ./OBJ/STRING.O ./OBJ/DMA.O
-		ar rvs ./LIB/lib.a ./OBJ/FDC.O ./OBJ/TSS.O
+		ar rvs ./LIB/lib.a ./OBJ/FDC.O ./OBJ/TSS.O ./OBJ/PS2.O
 		@ECHO MEM/PHYSICAL.C
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/PHYSICAL.O ./LIBSRC/MEM/PHYSICAL.c
 		@ECHO MEM/VIRTUAL.C
@@ -106,6 +108,8 @@
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/IRQ.O ./LIBSRC/IRQ.c
 		@ECHO KEYBOARD.C
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/KEYBOARD.O ./LIBSRC/KEYBOARD.c
+		@ECHO PS2.C
+		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/PS2.O ./LIBSRC/PS2.c
 		@ECHO MATH.C
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/MATH.O ./LIBSRC/MATH.c
 		@ECHO STDIO.C
@@ -119,7 +123,7 @@
 		@ECHO lib.a
 		ar rvs ./LIB/lib.a ./OBJ/CMOS.O ./OBJ/GDT.O ./OBJ/IDT.O ./OBJ/IRQ.O ./OBJ/KEYBOARD.O
 		ar rvs ./LIB/lib.a ./OBJ/TIMER.O ./OBJ/MATH.O ./OBJ/STDIO.O ./OBJ/STRING.O ./OBJ/DMA.O
-		ar rvs ./LIB/lib.a ./OBJ/FDC.O ./OBJ/TSS.O
+		ar rvs ./LIB/lib.a ./OBJ/FDC.O ./OBJ/TSS.O ./OBJ/PS2.O
 		@ECHO MEM/PHYSICAL.C
 		gcc -Wall -std=gnu99 -nostdinc -I./include -c -o ./OBJ/PHYSICAL.O ./LIBSRC/MEM/PHYSICAL.c
 		@ECHO MEM/VIRTUAL.C

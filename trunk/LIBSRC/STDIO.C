@@ -70,6 +70,17 @@ void initVideo()
 	return;
 }
 
+uint8_t getColorOf(uint8_t X, uint8_t Y)
+{
+	uint8_t *VIDMEM = (char *) 0xb8000;
+	return VIDMEM[(((Y * COLS) + X) * 2) + 1];
+}
+uint8_t getCharOf(uint8_t X, uint8_t Y)
+{
+	uint8_t *VIDMEM = (char *) 0xb8000;
+	return VIDMEM[((Y * COLS) + X) * 2];
+}
+
 void puts(char *message)
 {
 	while (*message!=0)
@@ -270,14 +281,13 @@ void putch(char charactor)
 			curX ++;
 			break;
 	}
-	if (curX >= COLS)
-	{
-		curX = 0;
-		curY ++;
-	}
-	while (curY >= ROWS)
-	{
-		scrollScreen ();
+	if (!scroll_disable) {
+		if (curX >= COLS) {
+			curX = 0;
+			curY ++;
+		}
+		while (curY >= ROWS)
+			scrollScreen ();
 	}
 	return;
 }

@@ -9,7 +9,7 @@
 #include <IRQ.H>
 #include <TIMER.H>
 
-#define debug 0
+#define debug 1
 
 int tries;
 uint16_t _currentCylinder;
@@ -118,14 +118,16 @@ bool floppy_waitIRQ()
 {
 	if (debug) puts("Waiting for IRQ to fire...");
 	//while (!_FloppyDiskIRQ);
-	int timeout = 25;
+	int timeout = 10;
 	while ( !_FloppyDiskIRQ && timeout) {
-		timer_wait(2);
+		timer_wait(1);
 		timeout--;
 	}
-	if (debug) printf ("\tDone %i Timeout\n",timeout);
 	_FloppyDiskIRQ = FALSE;
-	if (!timeout) return FALSE;
+	if (!timeout) {
+		return FALSE;
+		if (debug) puts ("\tNO INT\n");
+	}
 	else return TRUE;
 }
 
@@ -193,10 +195,10 @@ void floppy_IRQ_handle(uint32_t* st0, uint32_t* cyl)
 		if (FIFO_ready()) {
 			FIFO_write(SENSE_INTERRUPT);
 			//outb(FIFO, SENSE_INTERRUPT);
-			timer_wait(2);
+			timer_wait(1);
 			*st0 = FIFO_read();
 			//*st0 = inb (FIFO);
-			timer_wait(2);
+			timer_wait(1);
 			*cyl = FIFO_read();
 			//*cyl = inb (FIFO);
 			//while (!FIFO_ready()) FIFO_read();
@@ -218,7 +220,7 @@ void floppy_motor(bool on)
 		DOR_write (0x0C | floppy_drive_number  | FLOPPY_MOTOR_LIST[floppy_drive_number]);
 	else
 		DOR_write (0x0C | floppy_drive_number);
-	timer_wait(5);
+	timer_wait(4);
 }
 void floppy_speed(int speed) //0=500KB\s 1=300KB\s 2=250KB\s 3=1MB\s
 {
@@ -243,9 +245,8 @@ void fdc_quickReset()
 	fdc_disable();
 	fdc_enable();
 	if(floppy_waitIRQ ()) {
-		for (int i=0; i<4; i++) {
+		for (int i=0; i<4; i++)
 			floppy_IRQ_handle (&st0,&cyl0);
-		}
 	}
 	floppy_calibrate();
 }
