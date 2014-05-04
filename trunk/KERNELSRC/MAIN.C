@@ -16,28 +16,30 @@
 #include "../DRIVERSRC/SYSTEM/MEM/PAGEFAULT.H"
 #include "COMMAND.H"
 #include "../DRIVERSRC/SYSTEM/FS/FAT12.H"
+#include "../DRIVERSRC/HARDWARE/8042/8042.H"
 
 int main()
 {
-	gdt_install		();
-	idt_install		();
-    isrs_install	();
-    irq_install		();
-	initVideo		();
-	readCMOS		();
-	install_keyboard();
-	init_PS2		();
-    timer_install	();
-	initPHYSMEM();
-	init_pageFault();
+	gdt_install ();
+	idt_install ();
+    isrs_install ();
+    irq_install ();
+	initVideo ();
+	readCMOS ();
+	if (_8042_init()) {
+		_keyboard_init ();
+		_mouse_init ();
+	}
+    timer_install ();
+	initPHYSMEM ();
+	init_pageFault ();
 	vmmngr_initialize ();
 	__asm__ __volatile__ ("sti");					//DON'T FROGET TO RE-ENABLE INTS OR NOTHING WILL WORK RIGHT!!!!
-	floppy_install	();
+	floppy_install ();
 	//floppy_readSector(0,1);
 	//fsysFatInitialize ();
 	
 	//printf ("textTOhex() test: 07 = %i && CF = %i", textTOhex("07"), textTOhex("CF"));
-	
 	init_cmd ();
 	while(CMD_ACTIVE)
 		cmd_handler();

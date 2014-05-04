@@ -7,6 +7,10 @@
 	
 	#include <FORMATTING.H>
 	
-	bool init_8042(void);
+	uint8_t _8042_readPort();
+	void _8042_writePort(int port, uint8_t data);
+	bool _8042_disablePort(int port);
+	bool _8042_enablePort(int port);
+	bool _8042_init(void);
 	
 #endif

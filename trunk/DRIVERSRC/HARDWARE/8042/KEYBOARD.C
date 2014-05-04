@@ -3,9 +3,10 @@
 */
 
 #include "KEYBOARD.H"
+#include "8042.H"
 #include "../../SYSTEM/CPU/IRQ.H"
 
-extern unsigned char inb (unsigned short _port);
+//extern unsigned char inb (unsigned short _port);
 
 unsigned char keyboard[128] =
 {
@@ -182,7 +183,7 @@ void keyboard_handler(struct regs *r)
     unsigned char scancode;
 
     /* Read from the keyboard's data buffer */
-    scancode = inb(0x60);
+    scancode = _8042_readPort();
 
     /* If the top bit of the byte we read from the keyboard is
     *  set, that means that a key has just been released */
@@ -250,11 +251,21 @@ void keyboard_handler(struct regs *r)
 }
 
 /* Installs the keyboard handler into IRQ1 */
-void install_keyboard()
+void _keyboard_init()
 {
 	keyboard_buffer = '\0';
 	keyboard_alt = 0;
 	keyboard_ctrl = 0;
 	keyboard_shift = 0;
+	/*//Enable Port 1
+	outb(0x64, 0xAE);
+	//Enable the interrupts AND TRANSLATION
+	outb(0x64, 0x20);
+	uint8_t _status=(inb(0x60) | 1 | 0x40);
+	outb(0x64, 0x60);
+	outb(0x60, _status);*/
+	_8042_enablePort(1);
+	
+	
     irq_install_handler(1, keyboard_handler);
 }

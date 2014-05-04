@@ -6,6 +6,8 @@
 #ifndef				KEYBOARD_H_INCLUDED
 	#define				KEYBOARD_H_INCLUDED
 	
+	#include <FORMATTING.H>
+	
 	char keyboard_buffer;
 	int keyboard_ctrl;
 	int keyboard_alt;
@@ -165,6 +167,6 @@
 		KEY_NUMKEYCODES
 	};
 	
-	void install_keyboard(void);
+	void _keyboard_init(void);
 	
 #endif

@@ -45,7 +45,7 @@
 		_PS2_STATUS		=	0xE9
 	};
 	
-	void init_PS2(void);
+	void _mouse_init(void);
 	void PS2_setScreenSize(uint16_t X, uint16_t Y);
 
 #endif
