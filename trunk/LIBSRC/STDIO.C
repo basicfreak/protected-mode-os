@@ -4,7 +4,7 @@
 
 #include <STDIO.H>
 #include <STRING.H>
-#include <KEYBOARD.H>
+#include "../DRIVERSRC/HARDWARE/8042/KEYBOARD.H"
 
 /*
 ---------------------------------------------------------------------------------------
@@ -152,8 +152,7 @@ void printf(char *message, ...)
 	movcur			(curX, curY);
 	return;
 }
-
-printfc(int cSet, char *message, ...) {
+void printfc(int cSet, char *message, ...) {
 	int tempColor = getColor();
 	setColor(cSet);
 	va_list ap;

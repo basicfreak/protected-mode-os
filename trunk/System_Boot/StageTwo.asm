@@ -171,12 +171,18 @@ inPMode:
 	
 	jmp		0x8:0xCC00
 
+ErrorSubPMode:
+	mov		ebx, ERRMSG
+	call	print
+	cli
+	hlt
+	
 ; ESI => FROM MEMROY ADDRESS
 ; EDI => TO MEMORY ADDRESS
 CopyImage:
 	mov		eax, dword [ImageSize]
 	cmp		eax, 0
-	jle 		ErrorSubPMode
+	jle 	ErrorSubPMode
 	movzx	ebx, word [bpbBytesPerSector]
 	mul		ebx
 	mov		ebx, 4
@@ -188,8 +194,3 @@ CopyImage:
 	rep		movsd
 	ret
 	
-ErrorSubPMode:
-	mov		ebx, ERRMSG
-	call	print
-	cli
-	hlt
