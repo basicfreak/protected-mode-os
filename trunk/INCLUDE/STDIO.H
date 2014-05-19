@@ -33,8 +33,12 @@
 	int					getColor(void);
 	
 	
-	unsigned char 		inb (unsigned short _port);
-	void 				outb (unsigned short _port, unsigned char _data);
+	uint8_t 			inb (uint16_t _port);
+	void 				outb (uint16_t _port, uint8_t _data);
+	uint16_t	 		inw (uint16_t _port);
+	void				outw (uint16_t _port, uint16_t _data);
+	uint32_t	 		inl (uint16_t _port);
+	void				outl (uint16_t _port, uint32_t _data);
 	void				*memcpy(void *dest, const void *src, size_t count);
 	void				*memset(void *dest, char val, size_t count);
 	unsigned short		*memsetw(unsigned short *dest, unsigned short val, size_t count);

@@ -10,6 +10,7 @@
 #include "../DRIVERSRC/SYSTEM/MEM/PHYSICAL.H"
 #include "../DRIVERSRC/SYSTEM/FS/VFS.H"
 #include "../DRIVERSRC/SYSTEM/FS/FAT12.H"
+#include "../DRIVERSRC/HARDWARE/PCI.H"
 
 void cmd_read (int sec, int num);
 void cat(char* path);
@@ -46,6 +47,8 @@ void do_CMD(int args)
 		fsysFatInitialize ();
 	else if (streql(explode_cmd[0], "cls"))
 		cls();
+	else if (streql(explode_cmd[0], "pci"))
+		_PCI_init();
 	else if (streql(explode_cmd[0], "cat"))
 		cat(explode_cmd[1]);
 	else if (streql(explode_cmd[0], "exit"))

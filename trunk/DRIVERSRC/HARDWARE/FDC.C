@@ -9,7 +9,7 @@
 #include "../SYSTEM/CPU/IRQ.H"
 #include "TIMER.H"
 
-#define debug 1
+#define debug 0
 
 int tries;
 uint16_t _currentCylinder;

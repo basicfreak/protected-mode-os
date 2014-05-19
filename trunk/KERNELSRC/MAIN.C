@@ -1,5 +1,5 @@
 /*
-./SRC/MAIN.C
+./KERNELSRC/MAIN.C
 */
 
 #include "../DRIVERSRC/SYSTEM/CPU/GDT.H"
@@ -17,32 +17,64 @@
 #include "COMMAND.H"
 #include "../DRIVERSRC/SYSTEM/FS/FAT12.H"
 #include "../DRIVERSRC/HARDWARE/8042/8042.H"
+#include "../DRIVERSRC/HARDWARE/PCI.H"
+#include "../DRIVERSRC/HARDWARE/BIOS.H"
+#include "../DRIVERSRC/HARDWARE/RS232.H"
 
-int main()
+void _init()
 {
-	gdt_install ();
-	idt_install ();
-    isrs_install ();
-    irq_install ();
 	initVideo ();
-	readCMOS ();
-	if (_8042_init()) {
-		_keyboard_init ();
-		_mouse_init ();
-	}
-    timer_install ();
+puts("Installing GDT...");
+	gdt_install ();
+puts("Done.\nInstalling IDT...");
+	idt_install ();
+puts("Done.\nInstalling ISRS...");
+	isrs_install ();
+puts("Done.\nInstalling IRQ...");
+	irq_install ();
+puts("Done.\nInstalling Physical Memory Manager...");
 	initPHYSMEM ();
+puts("Done.\nInstalling Virtual Memory Manager...");
 	init_pageFault ();
 	vmmngr_initialize ();
 	__asm__ __volatile__ ("sti");					//DON'T FROGET TO RE-ENABLE INTS OR NOTHING WILL WORK RIGHT!!!!
-	floppy_install ();
-	//floppy_readSector(0,1);
-	//fsysFatInitialize ();
+puts("Done.\nGetting BIOS Data...");
+	_BIOS_init();
+puts("Done.\nGetting CMOS Data...");
+	readCMOS();
+puts("Done.\nInitilizing PCI...");
+	_PCI_init();
+puts("Done.\nInstalling Timer...");
+	timer_install ();
+puts("Done.\nInitilizing i8042...");
+			bool _8042_init_stat = _8042_init();
+			if (_8042_init_stat == 2) {
+				puts("Done.\n\tInstalling PS/2 Keyboard...");
+				_keyboard_init ();
+				puts("Done.\n\tInstalling PS/2 Mouse...Done.\n");
+				_mouse_init ();
+			} else if (_8042_init_stat == 1) {
+				puts("Warning.\n\tInstalling PS/2 Keyboard...");
+				_keyboard_init ();
+				puts("Done.\n\tWARNING:\tNO MOUSE\n");
+			} else {
+				puts("ERROR!\n\tWARNING:\tFORCING KEYBOARD...");
+				_keyboard_init ();
+				puts("Done.\n\tWARNING:\tNO MOUSE\n");
+			}
 	
-	//printf ("textTOhex() test: 07 = %i && CF = %i", textTOhex("07"), textTOhex("CF"));
-	init_cmd ();
-	while(CMD_ACTIVE)
-		cmd_handler();
+puts("Installing FDC...");
+	floppy_install ();
+puts("Done.\nInstalling FAT12...");
+	fsysFatInitialize ();
+puts("Done.\nInitilizing RS232...");
+	_RS232_init();
+puts("Done.\n");
+	
+}
+
+void _exit_()
+{
 	movcur(ROWS - 1, COLS - 1);
 	movcur_disable ++;
 	setColor		(0x0F);
@@ -64,8 +96,32 @@ int main()
 	curX = (COLS / 2) - 17;
 	curY = ROWS - 1;
 	puts("             GOOD BYE!");
-	//__asm__ __volatile__ ("sti");
 	__asm__ __volatile__ ("hlt");
+	for(;;);
+}
+
+int main()
+{
+	_init();
+	init_cmd ();
+	while(CMD_ACTIVE)
+		cmd_handler();
+	_exit_();
+	return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+	//__asm__ __volatile__ ("sti");
 /*	sleep(60);				//wait 60 seconds and display EASTER EGG
 	__asm__ __volatile__ ("cli");
 	setColor (0x1F);
@@ -80,6 +136,4 @@ So long, so long, so long, so long, so long\nSo long, so long, so long, so long,
 So long, so long and thanks\nfor all the fish\n");
 	__asm__ __volatile__ ("hlt");
 */
-	for(;;);
-	return 0;
-}
+	
