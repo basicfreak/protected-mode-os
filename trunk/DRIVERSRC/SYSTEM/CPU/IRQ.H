@@ -1,41 +1,38 @@
 /*
-./INCLUDE/IRQ.H
+./DRIVERSRC/SYSTEM/CPU/IRQ.H
 */
 
 #ifndef				IRQ_H_INCLUDED
 	#define				IRQ_H_INCLUDED
 	
-	/* These are own ISRs that point to our special IRQ handler
-	*  instead of the regular 'fault_handler' function */
-	extern void irq0();
-	extern void irq1();
-	extern void irq2();
-	extern void irq3();
-	extern void irq4();
-	extern void irq5();
-	extern void irq6();
-	extern void irq7();
-	extern void irq8();
-	extern void irq9();
-	extern void irq10();
-	extern void irq11();
-	extern void irq12();
-	extern void irq13();
-	extern void irq14();
-	extern void irq15();
+	#include <FORMATTING.H>
+
+	extern void IRQ0();
+	extern void IRQ1();
+	extern void IRQ2();
+	extern void IRQ3();
+	extern void IRQ4();
+	extern void IRQ5();
+	extern void IRQ6();
+	extern void IRQ7();
+	extern void IRQ8();
+	extern void IRQ9();
+	extern void IRQ10();
+	extern void IRQ11();
+	extern void IRQ12();
+	extern void IRQ13();
+	extern void IRQ14();
+	extern void IRQ15();
 	
-	struct regs
-	{
-		unsigned int gs, fs, es, ds;
-		unsigned int edi, esi, ebp, esp, ebx, edx, ecx, eax;
-		unsigned int int_no, err_code;
-		unsigned int eip, cs, eflags, useresp, ss;    
-	};
+	typedef struct registers	{
+		uint32_t gs, fs, es, ds;
+		uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
+		uint32_t int_no, err_code;
+		uint32_t eip, cs, eflags, useresp, ss;    
+	} regs;
 	
-	void isrs_install(void);
-	void irq_install_handler(int irq, void (*handler)(struct regs *r));
-	void irq_uninstall_handler(int irq);
-	void irq_install(void);
-	void iError(char *Reason);
+	void install_IR(uint8_t irq, void (*handler)(regs *r));
+	void uninstall_IR(uint8_t irq);
+	void _IRQ_init(void);
 	
 #endif

@@ -4,57 +4,41 @@
 
 #include "GDT.H"
 
-/* Setup a descriptor in the Global Descriptor Table */
-void gdt_set_gate(int num, unsigned long base, unsigned long limit, unsigned char access, unsigned char gran)
+void install_ring(uint8_t num, uint32_t base, uint32_t limit, uint8_t access, uint8_t gran)
 {
-/* Setup the descriptor base address */
 	gdt[num].base_low = (base & 0xFFFF);
 	gdt[num].base_middle = (base >> 16) & 0xFF;
 	gdt[num].base_high = (base >> 24) & 0xFF;
-/* Setup the descriptor limits */
 	gdt[num].limit_low = (limit & 0xFFFF);
 	gdt[num].granularity = ((limit >> 16) & 0x0F);
-/* Finally, set up the granularity and access flags */
 	gdt[num].granularity |= (gran & 0xF0);
 	gdt[num].access = access;
 }
 
-/* Should be called by main. This will setup the special GDT
-*  pointer, set up the first 3 entries in our GDT, and then
-*  finally call gdt_flush() in our assembler file in order
-*  to tell the processor where the new GDT is and update the
-*  new segment registers */
-void gdt_install()
+void _GDT_init()
 {
 /* Setup the GDT pointer and limit */
-    gp.limit = (sizeof(struct gdt_entry) * 3) - 1;
-    gp.base = &gdt;
-/* Our NULL descriptor */
-    gdt_set_gate (0, 0, 0, 0, 0);
+    gp.limit = (sizeof(struct gdt_entry) * 10) - 1;
+    gp.base = (uint32_t) &gdt;
+// NULL
+    install_ring (0, 0, 0, 0, 0);
 	
 // KERNEL MODE RING 0
 
-/* The second entry is our Code Segment. The base address
-*  is 0, the limit is 4GBytes, it uses 4KByte granularity,
-*  uses 32-bit opcodes, and is a Code Segment descriptor.
-*  Please check the table above in the tutorial in order
-*  to see exactly what each value means */
-    gdt_set_gate (1, 0, 0xFFFFFFFF,
+    install_ring (1, 0, 0xFFFFFFFF,
 			_MEMORY | _CODEDATA | _EXEC_CODE | _READWRITE,
 			_4K | _32BIT | _LIMITHI_MASK);
-/* The third entry is our Data Segment. It's EXACTLY the
-*  same as our code segment, but the descriptor type in
-*  this entry's access byte says it's a Data Segment */
-    gdt_set_gate (2, 0, 0xFFFFFFFF,
+
+    install_ring (2, 0, 0xFFFFFFFF,
 			_MEMORY | _CODEDATA | _READWRITE,
 			_4K | _32BIT | _LIMITHI_MASK);
 			
 // USER MODE RING 3
-	gdt_set_gate (3, 0, 0xFFFFFFFF,
+	install_ring (3, 0, 0xFFFFFFFF,
 			_READWRITE | _EXEC_CODE | _CODEDATA | _MEMORY | _DPL,
 			_4K | _32BIT | _LIMITHI_MASK);
 			
-	gdt_set_gate (4, 0, 0xFFFFFFFF,
+	install_ring (4, 0, 0xFFFFFFFF,
 			_READWRITE | _CODEDATA | _MEMORY | _DPL,
 			_4K | _32BIT | _LIMITHI_MASK);
 

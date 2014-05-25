@@ -25,7 +25,7 @@ void install_tss (uint32_t idx, uint16_t kernelSS, uint16_t kernelESP)
 	uint32_t base = (uint32_t) &TSS;
 
 	// install descriptor
-	gdt_set_gate (idx, base, base + sizeof (struct tss_entry),
+	install_ring(idx, base, base + sizeof (struct tss_entry),
 		_ACCESS | _EXEC_CODE | _DPL | _MEMORY,
 		0);
 

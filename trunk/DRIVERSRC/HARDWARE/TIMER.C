@@ -11,7 +11,7 @@
 *  timer fires. By default, the timer fires 18.222 times
 *  per second. Why 18.222Hz? Some engineer at IBM must've
 *  been smoking something funky */
-void timer_handler(struct regs *r)
+void timer_handler(regs *r)
 {
     /* Increment our 'tick count' */
     timer_ticks++;
@@ -83,5 +83,5 @@ void timer_install()
 	timer_years = 0;
 	timer_ticks = 0;
     /* Installs 'timer_handler' to IRQ0 */
-    irq_install_handler(0, timer_handler);
+    install_IR(0, timer_handler);
 }

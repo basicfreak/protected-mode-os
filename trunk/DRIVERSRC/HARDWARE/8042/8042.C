@@ -179,15 +179,12 @@ bool _8042_init()
 	sendDevice(CONFIG_8042);
 	// SELF TEST
 	sendCommand(_8042_TEST);
-	timer_wait(2);
 	if (!getDevice() == 0x55)	// ERROR 8042
 		return 0;
 	sendCommand(_8042_TEST_PORT1);
-	timer_wait(2);
 	if (getDevice())			// ERROR PORT ONE
 		return 0;
 	sendCommand(_8042_TEST_PORT2);
-	timer_wait(2);
 	if (!getDevice())			// 2 PORTS
 		return 2;
 	return 1;					// 1 PORT

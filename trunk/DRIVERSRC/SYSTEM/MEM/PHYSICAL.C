@@ -3,7 +3,7 @@
 */
 
 #include "PHYSICAL.H"
-#include "../CPU/IRQ.H"			//for iError();
+#include "../CPU/ISR.H"			//for iError();
 #include <STDIO.H>
 
 //IN START.ASM:

@@ -178,7 +178,7 @@ static int keyboard_scancode_std [] = {
 const int INVALID_SCANCODE = 0;
 
 /* Handles the keyboard interrupt */
-void keyboard_handler(struct regs *r)
+void keyboard_handler(regs *r)
 {
     unsigned char scancode;
 
@@ -267,5 +267,5 @@ void _keyboard_init()
 	_8042_enablePort(1);
 	
 	
-    irq_install_handler(1, keyboard_handler);
+    install_IR(1, keyboard_handler);
 }

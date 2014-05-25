@@ -5,6 +5,7 @@
 #include "../DRIVERSRC/SYSTEM/CPU/GDT.H"
 #include "../DRIVERSRC/SYSTEM/CPU/IDT.H"
 #include "../DRIVERSRC/SYSTEM/CPU/IRQ.H"
+#include "../DRIVERSRC/SYSTEM/CPU/ISR.H"
 #include "../DRIVERSRC/SYSTEM/MEM/VIRTUAL.H"
 #include <STDIO.H>
 #include "../DRIVERSRC/HARDWARE/TIMER.H"
@@ -20,18 +21,19 @@
 #include "../DRIVERSRC/HARDWARE/PCI.H"
 #include "../DRIVERSRC/HARDWARE/BIOS.H"
 #include "../DRIVERSRC/HARDWARE/RS232.H"
+#include "../DRIVERSRC/SYSTEM/CPU/8259.H"
 
 void _init()
 {
 	initVideo ();
 puts("Installing GDT...");
-	gdt_install ();
+	_GDT_init();
 puts("Done.\nInstalling IDT...");
-	idt_install ();
-puts("Done.\nInstalling ISRS...");
-	isrs_install ();
+	_IDT_init();
+puts("Done.\nInstalling ISR...");
+	_ISR_init();
 puts("Done.\nInstalling IRQ...");
-	irq_install ();
+	_IRQ_init();
 puts("Done.\nInstalling Physical Memory Manager...");
 	initPHYSMEM ();
 puts("Done.\nInstalling Virtual Memory Manager...");
@@ -44,8 +46,11 @@ puts("Done.\nGetting CMOS Data...");
 	readCMOS();
 puts("Done.\nInitilizing PCI...");
 	_PCI_init();
+puts("Done.\nInitilizing RS232...");
+	_RS232_init();
 puts("Done.\nInstalling Timer...");
 	timer_install ();
+	_8259_Enable_IRQ(0);
 puts("Done.\nInitilizing i8042...");
 			bool _8042_init_stat = _8042_init();
 			if (_8042_init_stat == 2) {
@@ -65,12 +70,9 @@ puts("Done.\nInitilizing i8042...");
 	
 puts("Installing FDC...");
 	floppy_install ();
-puts("Done.\nInstalling FAT12...");
-	fsysFatInitialize ();
-puts("Done.\nInitilizing RS232...");
-	_RS232_init();
+/*puts("Done.\nInstalling FAT12...");
+	fsysFatInitialize ();*/
 puts("Done.\n");
-	
 }
 
 void _exit_()

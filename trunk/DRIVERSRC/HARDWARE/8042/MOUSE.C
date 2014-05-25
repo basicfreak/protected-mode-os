@@ -94,7 +94,7 @@ void PS2_setScreenSize(uint16_t X, uint16_t Y)
 }
 
 //Mouse functions
-void mouse_handler(struct regs *a_r) //struct regs *a_r (not used but just there)
+void mouse_handler(regs *a_r) //struct regs *a_r (not used but just there)
 {
 	switch(mouse_cycle)
 	{
@@ -131,5 +131,5 @@ void _mouse_init()
 	_8042_readPort();  //Acknowledge
 
 	//Setup the mouse handler
-	irq_install_handler(12, mouse_handler);
+	install_IR(12, mouse_handler);
 }

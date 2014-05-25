@@ -21,7 +21,7 @@ bool FIFO_write(uint8_t cmd);
 void DOR_write(uint8_t cmd);
 bool floppy_waitIRQ(void);		
 bool FIFO_ready(void);
-void floppy_handler(struct regs *r);
+void floppy_handler(regs *r);
 void floppy_IRQ_handle(uint32_t* st0, uint32_t* cyl);
 bool floppy_changed(void);
 void floppy_speed(int speed); //0=500KB\s 1=300KB\s 2=250KB\s 3=1MB\s
@@ -181,7 +181,7 @@ uint8_t floppy_status()
 {
 	return inb(MSR);
 }
-void floppy_handler(struct regs *r)
+void floppy_handler(regs *r)
 { 
 	
 	//! irq fired
@@ -463,7 +463,7 @@ void floppy_install()
 {
 	floppy_drive_number = 0;
 	floppy_setVars(CMOS_Floppy_Master);
-	irq_install_handler(6, floppy_handler);
+	install_IR(6, floppy_handler);
 	_FloppyDiskIRQ = FALSE;
 	fdc_disable();
 	floppy_reset();	
