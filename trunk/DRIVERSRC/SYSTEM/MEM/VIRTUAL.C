@@ -52,10 +52,7 @@ void vmmngr_initialize ()
 	if (!table)
 	  return;
 
-	//allocates 3gb page table
-	struct ptable* table2 = (struct ptable*) pmmngr_alloc_block ();
-	if (!table2)
-	  return;
+	
 
 	// clear page table
 	memset (table, 0, sizeof (struct ptable));
@@ -64,17 +61,12 @@ void vmmngr_initialize ()
 	for (int i=0, frame=0x0, virt=0x00000000; i<1024; i++, frame+=4096, virt+=4096) {
 		pt_entry page=0;
 		pt_entry_add_attrib (&page, I86_PTE_PRESENT);
-		pt_entry_set_frame (&page, frame);
-		table2->m_entries [PAGE_TABLE_INDEX (virt) ] = page;
-	}
-	for (int i=0, frame=0x400000, virt=0x400000; i<1024; i++, frame+=4096, virt+=4096) {
-		pt_entry page=0;
-		pt_entry_add_attrib (&page, I86_PTE_PRESENT);
 		pt_entry_add_attrib (&page, I86_PTE_USER);
+		pd_entry_add_attrib (&page, I86_PDE_WRITABLE);
 		pt_entry_set_frame (&page, frame);
 		table->m_entries [PAGE_TABLE_INDEX (virt) ] = page;
 	}
-
+	
 	// create default directory table
 	struct pdirectory*   dir = (struct pdirectory*) pmmngr_alloc_blocks (3);
 	if (!dir)
@@ -84,16 +76,13 @@ void vmmngr_initialize ()
 	memset (dir, 0, sizeof (struct pdirectory));
 
 	// get first entry in dir table and set it up to point to our table
-	pd_entry* entry = &dir->m_entries [PAGE_DIRECTORY_INDEX (0x400000) ];
-	pd_entry_add_attrib (entry, I86_PDE_PRESENT);
-	pd_entry_add_attrib (entry, I86_PDE_WRITABLE);
-	pt_entry_add_attrib (entry, I86_PDE_USER);
-	pd_entry_set_frame (entry, (physical_addr)table);
 
-	pd_entry* entry2 = &dir->m_entries [PAGE_DIRECTORY_INDEX (0x0) ];
-	pd_entry_add_attrib (entry2, I86_PDE_PRESENT);
-	pd_entry_add_attrib (entry2, I86_PDE_WRITABLE);
-	pd_entry_set_frame (entry2, (physical_addr)table2);
+
+	pd_entry* entry = &dir->m_entries [PAGE_DIRECTORY_INDEX (0x0) ];
+	pd_entry_add_attrib (entry, I86_PDE_PRESENT);
+	pt_entry_add_attrib (entry, I86_PDE_USER);
+	pd_entry_add_attrib (entry, I86_PDE_WRITABLE);
+	pd_entry_set_frame (entry, (physical_addr)table);
 
 	// store current PDBR
 	_cur_pdbr = (physical_addr) &dir->m_entries;
@@ -154,7 +143,7 @@ void vmmngr_flush_tlb_entry (virtual_addr addr)
 	#endif*/
 }
 
-void vmmngr_ptable_clear (struct ptable* p)
+/**void vmmngr_ptable_clear (struct ptable* p)
 {
 	
 }
@@ -162,7 +151,7 @@ void vmmngr_ptable_clear (struct ptable* p)
 uint32_t vmmngr_ptable_virt_to_index (virtual_addr addr)
 {
 	
-}
+}*/
 
 pt_entry* vmmngr_ptable_lookup_entry (struct ptable* p,virtual_addr addr)
 {
@@ -171,7 +160,7 @@ pt_entry* vmmngr_ptable_lookup_entry (struct ptable* p,virtual_addr addr)
 	return 0;
 }
 
-uint32_t vmmngr_pdirectory_virt_to_index (virtual_addr addr)
+/**uint32_t vmmngr_pdirectory_virt_to_index (virtual_addr addr)
 {
 	
 }
@@ -179,7 +168,7 @@ uint32_t vmmngr_pdirectory_virt_to_index (virtual_addr addr)
 void vmmngr_pdirectory_clear (struct pdirectory* dir)
 {
 	
-}
+}*/
 
 pd_entry* vmmngr_pdirectory_lookup_entry (struct pdirectory* p, virtual_addr addr)
 {

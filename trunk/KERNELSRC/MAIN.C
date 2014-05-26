@@ -6,6 +6,7 @@
 #include "../DRIVERSRC/SYSTEM/CPU/IDT.H"
 #include "../DRIVERSRC/SYSTEM/CPU/IRQ.H"
 #include "../DRIVERSRC/SYSTEM/CPU/ISR.H"
+#include "../DRIVERSRC/SYSTEM/CPU/INT.H"
 #include "../DRIVERSRC/SYSTEM/MEM/VIRTUAL.H"
 #include <STDIO.H>
 #include "../DRIVERSRC/HARDWARE/TIMER.H"
@@ -22,6 +23,7 @@
 #include "../DRIVERSRC/HARDWARE/BIOS.H"
 #include "../DRIVERSRC/HARDWARE/RS232.H"
 #include "../DRIVERSRC/SYSTEM/CPU/8259.H"
+extern void install_tss (uint32_t idx, uint16_t kernelSS, uint16_t kernelESP);
 
 void _init()
 {
@@ -34,6 +36,10 @@ puts("Done.\nInstalling ISR...");
 	_ISR_init();
 puts("Done.\nInstalling IRQ...");
 	_IRQ_init();
+puts("Done.\nInstalling INT...");
+	_INT_init();
+puts("Done.\nInstalling TSS...");
+	install_tss(5,0x10,0);
 puts("Done.\nInstalling Physical Memory Manager...");
 	initPHYSMEM ();
 puts("Done.\nInstalling Virtual Memory Manager...");
@@ -111,12 +117,6 @@ int main()
 	_exit_();
 	return 0;
 }
-
-
-
-
-
-
 
 
 

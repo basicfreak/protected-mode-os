@@ -44,6 +44,6 @@
 	void _ISR_init(void);
 	void install_ISR(uint8_t isrs, void (*handler)(regs *r));
 	void uninstall_ISR(uint8_t isrs);
-	void iError(char *Reason);
+	void iError(regs *r);
 	
 #endif

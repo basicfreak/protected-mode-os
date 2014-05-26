@@ -42,7 +42,7 @@
 00000000000i[DEV  ] PIIX3 PCI-to-ISA bridge present at device 1, function 0
 00000000000i[     ] init_dev of 'cmos' plugin device by virtual method
 00000000000i[CMOS ] Using local time for initial clock
-00000000000i[CMOS ] Setting initial clock to: Sun May 25 04:51:48 2014 (time0=1401011508)
+00000000000i[CMOS ] Setting initial clock to: Mon May 26 04:36:17 2014 (time0=1401096977)
 00000000000i[     ] init_dev of 'dma' plugin device by virtual method
 00000000000i[DMA  ] channel 4 used by cascade
 00000000000i[     ] init_dev of 'pic' plugin device by virtual method
@@ -193,43 +193,45 @@
 00002419666i[BXVGA] VBE known Display Interface b0c5
 00002422592i[VBIOS] VBE Bios $Id: vbe.c,v 1.64 2011/07/19 18:25:05 vruppert Exp $
 00014919119i[BIOS ] Booting from 0000:7c00
-00021658402i[MEM0 ] allocate_block: block=0x1 used 0x3 of 0x10
-00021708722i[MEM0 ] allocate_block: block=0x2 used 0x4 of 0x10
-00021751004i[MEM0 ] allocate_block: block=0x3 used 0x5 of 0x10
-00021794000i[MEM0 ] allocate_block: block=0x4 used 0x6 of 0x10
-00021837008i[MEM0 ] allocate_block: block=0x5 used 0x7 of 0x10
-00021880016i[MEM0 ] allocate_block: block=0x6 used 0x8 of 0x10
-00021923002i[MEM0 ] allocate_block: block=0x7 used 0x9 of 0x10
-00021966002i[MEM0 ] allocate_block: block=0x8 used 0xa of 0x10
-00022009010i[MEM0 ] allocate_block: block=0x9 used 0xb of 0x10
-00022052006i[MEM0 ] allocate_block: block=0xa used 0xc of 0x10
-00022095014i[MEM0 ] allocate_block: block=0xb used 0xd of 0x10
-00022138000i[MEM0 ] allocate_block: block=0xc used 0xe of 0x10
-00022181000i[MEM0 ] allocate_block: block=0xd used 0xf of 0x10
-00022224008i[MEM0 ] allocate_block: block=0xe used 0x10 of 0x10
-00023597273i[SER  ] com1: FIFO enabled
-00023597675i[SER  ] com1: FIFO enabled
-00023605012i[KBD  ] keyboard: scan convert turned off
-00023612986i[FDD  ] controller reset in software
-00038404000p[WGUI ] >>PANIC<< POWER button turned off.
-00038404000i[CPU0 ] CPU is in protected mode (active)
-00038404000i[CPU0 ] CS.mode = 32 bit
-00038404000i[CPU0 ] SS.mode = 32 bit
-00038404000i[CPU0 ] EFER   = 0x00000000
-00038404000i[CPU0 ] | EAX=00000000  EBX=00000004  ECX=00000000  EDX=000003d5
-00038404000i[CPU0 ] | ESP=0010bf90  EBP=0010bfa8  ESI=0000d000  EDI=0010a000
-00038404000i[CPU0 ] | IOPL=0 id vip vif ac vm rf nt of df IF tf sf ZF af PF cf
-00038404000i[CPU0 ] | SEG sltr(index|ti|rpl)     base    limit G D
-00038404000i[CPU0 ] |  CS:0008( 0001| 0|  0) 00000000 ffffffff 1 1
-00038404000i[CPU0 ] |  DS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
-00038404000i[CPU0 ] |  SS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
-00038404000i[CPU0 ] |  ES:0010( 0002| 0|  0) 00000000 ffffffff 1 1
-00038404000i[CPU0 ] |  FS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
-00038404000i[CPU0 ] |  GS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
-00038404000i[CPU0 ] | EIP=00101655 (00101655)
-00038404000i[CPU0 ] | CR0=0xe0000011 CR2=0x00000000
-00038404000i[CPU0 ] | CR3=0x00003000 CR4=0x00000000
-00038404000i[CPU0 ] 0x0000000000101655>> cmp dword ptr ss:[ebp-12], 0x00000000 : 837DF400
-00038404000i[CMOS ] Last time is 1401011517 (Sun May 25 04:51:57 2014)
-00038404000i[     ] restoring default signal behavior
-00038404000i[CTRL ] quit_sim called with exit code 1
+00021658422i[MEM0 ] allocate_block: block=0x1 used 0x3 of 0x10
+00021713736i[MEM0 ] allocate_block: block=0x2 used 0x4 of 0x10
+00021756006i[MEM0 ] allocate_block: block=0x3 used 0x5 of 0x10
+00021799014i[MEM0 ] allocate_block: block=0x4 used 0x6 of 0x10
+00021842000i[MEM0 ] allocate_block: block=0x5 used 0x7 of 0x10
+00021885000i[MEM0 ] allocate_block: block=0x6 used 0x8 of 0x10
+00021928008i[MEM0 ] allocate_block: block=0x7 used 0x9 of 0x10
+00021971004i[MEM0 ] allocate_block: block=0x8 used 0xa of 0x10
+00022014012i[MEM0 ] allocate_block: block=0x9 used 0xb of 0x10
+00022057002i[MEM0 ] allocate_block: block=0xa used 0xc of 0x10
+00022100006i[MEM0 ] allocate_block: block=0xb used 0xd of 0x10
+00022143006i[MEM0 ] allocate_block: block=0xc used 0xe of 0x10
+00022186002i[MEM0 ] allocate_block: block=0xd used 0xf of 0x10
+00022229010i[MEM0 ] allocate_block: block=0xe used 0x10 of 0x10
+00023570309i[SER  ] com1: FIFO enabled
+00023570711i[SER  ] com1: FIFO enabled
+00023578048i[KBD  ] keyboard: scan convert turned off
+00023586216i[FDD  ] controller reset in software
+00079240567e[CPU0 ] interrupt(): TSS selector points to invalid or bad TSS - #GP(tss_selector)
+00079358081i[CPU0 ] WARNING: HLT instruction with IF=0!
+00095204000p[WGUI ] >>PANIC<< POWER button turned off.
+00095204000i[CPU0 ] CPU is in protected mode (halted)
+00095204000i[CPU0 ] CS.mode = 32 bit
+00095204000i[CPU0 ] SS.mode = 32 bit
+00095204000i[CPU0 ] EFER   = 0x00000000
+00095204000i[CPU0 ] | EAX=00000015  EBX=00000023  ECX=00000000  EDX=000003d5
+00095204000i[CPU0 ] | ESP=0000bee0  EBP=0000bee8  ESI=0000d000  EDI=0010a000
+00095204000i[CPU0 ] | IOPL=0 id vip vif ac vm rf nt of df if tf sf zf af pf cf
+00095204000i[CPU0 ] | SEG sltr(index|ti|rpl)     base    limit G D
+00095204000i[CPU0 ] |  CS:0008( 0001| 0|  0) 00000000 ffffffff 1 1
+00095204000i[CPU0 ] |  DS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00095204000i[CPU0 ] |  SS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00095204000i[CPU0 ] |  ES:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00095204000i[CPU0 ] |  FS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00095204000i[CPU0 ] |  GS:0010( 0002| 0|  0) 00000000 ffffffff 1 1
+00095204000i[CPU0 ] | EIP=00103b73 (00103b73)
+00095204000i[CPU0 ] | CR0=0xe0000011 CR2=0x00000000
+00095204000i[CPU0 ] | CR3=0x00002000 CR4=0x00000000
+00095204000i[CPU0 ] 0x0000000000103b73>> jmp .-2 (0x00103b73) : EBFE
+00095204000i[CMOS ] Last time is 1401097000 (Mon May 26 04:36:40 2014)
+00095204000i[     ] restoring default signal behavior
+00095204000i[CTRL ] quit_sim called with exit code 1

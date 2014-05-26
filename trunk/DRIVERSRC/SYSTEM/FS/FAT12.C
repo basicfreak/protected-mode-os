@@ -35,7 +35,7 @@ void FATBlock_init()
 		if(isEven(i))
 			FATBlock[i] = value & 0x0FFF;
 		else
-			FATBlock[i] = (value >> 4) & 0x0FFF;
+			FATBlock[i] = (value >> 4);
 		if (debug) printf("%x ",FATBlock[i]);
 	}
 	if (debug) puts("\n");
@@ -44,6 +44,16 @@ void FATBlock_init()
 uint16_t Cluster(uint16_t cluster)
 {
 	return FATBlock[cluster];
+}
+
+void ROOTdir_init()
+{
+	PRDIR data = (PRDIR) floppy_readSector(19, 14);
+	memcpy(&FATRDIR, data, SECTOR_SIZE*14);
+	for (int i = 0; i < 224; i++) {
+		_ROOTdir->entry[i] = &(FATRDIR.entry[i]);
+	}
+	if(debug)dirTest();
 }
 
 void dirTest()
@@ -82,16 +92,6 @@ void dirTest()
 		if(!temp->Filename[0]) break;
 	}
 	putch('\n');
-}
-
-void ROOTdir_init()
-{
-	PRDIR data = (PRDIR) floppy_readSector(19, 14);
-	memcpy(&FATRDIR, data, SECTOR_SIZE*14);
-	for (int i = 0; i < 224; i++) {
-		_ROOTdir->entry[i] = &(FATRDIR.entry[i]);
-	}
-	if(debug)dirTest();
 }
 
 FILE SearchSubDirectory(FILE subDir, const char* FName)

@@ -114,10 +114,10 @@ void ISR_HANDLER(regs *r)
 	if (ISR)
 		ISR(r);
 	else
-		iError(exception_messages[r->int_no]);	// No Routine BSoD time.
+		iError(r);	// No Routine BSoD time.
 }
 
-void iError(char *Reason)						//Reason is Exception Name
+void iError(regs *r)						//Reason is Exception Name
 {
 	setColor (0x1F);
 	cls ();
@@ -126,8 +126,19 @@ void iError(char *Reason)						//Reason is Exception Name
 	setColor (0xCF);
 	puts ("Fatal System Error\n");
 	setColor (0x1F);
-	printf ("\t\t\t\t\t\t   %s Exception\n", Reason);
+	printf ("\t\t\t\t\t\t   %s Exception\n", exception_messages[r->int_no]);
 //HEX OF MEMORY LOCATION
+	/*typedef struct registers	{
+		uint32_t gs, fs, es, ds;
+		uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
+		uint32_t int_no, err_code;
+		uint32_t eip, cs, eflags, useresp, ss;    
+	} regs;*/
+	printf("EAX = 0x%x\nEBX = 0x%x\nECX = 0x%x\nEDX = 0x%x\n", r->eax, r->ebx, r->ecx, r->edx);
+	printf("EDI = 0x%x\nESI = 0x%x\nEBP = 0x%x\nESP = 0x%x\n", r->edi, r->esi, r->ebp, r->esp);
+	printf("GS = 0x%x\nFS = 0x%x\nES = 0x%x\nDS = 0x%x\n", r->gs, r->fs, r->es, r->ds);
+	printf("EIP = 0x%x\nCS = 0x%x\nEFLAGS = 0x%x\nSS = 0x%x\n", r->eip, r->cs, r->eflags, r->ss);
+	printf("USER-ESP = 0x%x\nERROR-CODE = 0x%x\n", r->useresp, r->err_code);
 	
 //END HEX
 	setColor (0x94);

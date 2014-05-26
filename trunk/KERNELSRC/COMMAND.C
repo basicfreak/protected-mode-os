@@ -11,6 +11,18 @@
 #include "../DRIVERSRC/SYSTEM/FS/VFS.H"
 #include "../DRIVERSRC/SYSTEM/FS/FAT12.H"
 #include "../DRIVERSRC/HARDWARE/PCI.H"
+#include "../DRIVERSRC/SYSTEM/CPU/INT.H"
+
+extern void _INT_30_TEST(void);
+void _INT_30_HANDLE(regs *r)
+{	
+	printf("INT 0x30 Has Been Called ;)\nEAX = 0x%x\tEBX = 0x%x\n", r->eax, r->ebx);
+}
+
+void _INT_TESTINSTALL()
+{
+	install_INT(0, _INT_30_HANDLE);
+}
 
 void cmd_read (int sec, int num);
 void cat(char* path);
@@ -88,6 +100,19 @@ void do_CMD(int args)
 		cmd_read( charTOint(explode_cmd[1]), charTOint(explode_cmd[2]));
 	else if (streql(explode_cmd[0], "dir"))
 		dirTest();
+	else if (streql(explode_cmd[0], "user")) {
+		uint16_t EsP = 0;
+		extern void tss_set_stack (uint16_t kernelSS, uint16_t kernelESP);
+		extern void enter_usermode();
+		__asm__ __volatile__ ("mov %%esp, %0":"=g"(EsP));
+		tss_set_stack(0x10, EsP);
+		enter_usermode();
+		puts("Welcome to User Land!\n");
+	}
+	else if (streql(explode_cmd[0], "initint30"))
+		_INT_TESTINSTALL();
+	else if (streql(explode_cmd[0], "int30"))
+		_INT_30_TEST();
 	else
 		printf("Invalid Command \"%s\"\n", cmd_command);
 }

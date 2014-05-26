@@ -42,7 +42,7 @@ void _GDT_init()
 			_READWRITE | _CODEDATA | _MEMORY | _DPL,
 			_4K | _32BIT | _LIMITHI_MASK);
 
-	
 /* Flush out the old GDT and install the new changes! */
     gdt_flush ();
+	
 }

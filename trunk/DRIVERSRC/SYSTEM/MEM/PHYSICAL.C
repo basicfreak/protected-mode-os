@@ -142,8 +142,12 @@ void initPHYSMEM()
 {
 	*RAM = 0x0;
 	TotalRAM = probeRAM();
-	if (TotalRAM < 0x1000)	//4MB ([4KB]KB)
-		iError("NOT ENOUGH RAM");
+	if (TotalRAM < 0x1000) {	//4MB ([4KB]KB)
+		puts("NOT ENOUGH RAM!\tSYSTEM HALTED");
+		__asm__ __volatile__ ("cli");
+		__asm__ __volatile__ ("hlt");
+		for(;;);
+	}
 	_mmngr_memory_size	=	TotalRAM;
 	_mmngr_memory_map	=	(uint32_t*) MMAP_LOCATION;
 	_mmngr_max_blocks	=	(TotalRAM*1024) / PMMNGR_BLOCK_SIZE;
