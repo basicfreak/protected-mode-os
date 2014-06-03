@@ -6,7 +6,7 @@
 
 #ifndef				PHYSICAL_H_INCLUDED
 	#define				PHYSICAL_H_INCLUDED
-	
+	#define DEBUG
 	//112 Bytes
 	struct tss_entry {
 		uint32_t prevTss;
@@ -38,8 +38,12 @@
 		uint16_t iomap;
 	} __attribute__((packed));
 
-	void tss_set_stack (uint16_t kernelSS, uint16_t kernelESP);
-	void install_tss (uint32_t idx, uint16_t kernelSS, uint16_t kernelESP);
+	void tss_set_stack (uint32_t kernelSS, uint32_t kernelESP);
+	void install_tss (uint8_t idx, uint32_t kernelSS, uint32_t kernelESP);
 	extern void enter_usermode(void);
+	uint32_t Kernel_Stack(void);
+	#ifdef DEBUG
+		void _TSS_debug(void);
+	#endif
 	
 #endif

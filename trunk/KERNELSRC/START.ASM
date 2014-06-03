@@ -423,11 +423,39 @@ ISR_COMMON:
 [global _IRQ14]
 [global _IRQ15]
 
-_IRQ0:
+[extern _PIT_TASK_IR]
+
+[global __SYSTEM_IDLE_THREAD]
+__SYSTEM_IDLE_THREAD:
+	hlt
+	jmp __SYSTEM_IDLE_THREAD
+
+_IRQ0:		; PIT This will be different than all the others for my scheduler
 	cli
-	push byte 0
-	push byte 32
-	jmp IRQ_COMMON
+	; Save Registers
+	pusha
+	push ds
+	push es
+	push fs
+	push gs
+	mov eax, esp
+	; Call Int Routine
+	push eax
+	mov eax, _PIT_TASK_IR
+	call eax
+	; Send 0x20 to 0x20 EOI - Primary PIC
+	mov al, 0x20
+	out 0x20, al
+	pop eax
+	; Restore Registers
+	; If task switch is done these values have been changed since push
+	pop gs
+	pop fs
+	pop es
+	pop ds
+	popa
+	; Return or Call Task
+	iret
 	
 _IRQ1:
 	cli
@@ -773,7 +801,6 @@ _INT31:
     jmp INT_COMMON
 
 INT_COMMON:
-hlt
     pusha
     push ds
     push es

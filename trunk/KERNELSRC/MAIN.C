@@ -23,6 +23,9 @@
 #include "../DRIVERSRC/HARDWARE/BIOS.H"
 #include "../DRIVERSRC/HARDWARE/RS232.H"
 #include "../DRIVERSRC/SYSTEM/CPU/8259.H"
+#include "../DRIVERSRC/SYSTEM/API/API.H"
+#include "../DRIVERSRC/SYSTEM/API/THREADMAN.H"
+
 extern void install_tss (uint32_t idx, uint16_t kernelSS, uint16_t kernelESP);
 
 void _init()
@@ -40,6 +43,8 @@ puts("Done.\nInstalling INT...");
 	_INT_init();
 puts("Done.\nInstalling TSS...");
 	install_tss(5,0x10,0);
+puts("Done.\nInstalling API...");
+	_API_init();
 puts("Done.\nInstalling Physical Memory Manager...");
 	initPHYSMEM ();
 puts("Done.\nInstalling Virtual Memory Manager...");
@@ -54,9 +59,10 @@ puts("Done.\nInitilizing PCI...");
 	_PCI_init();
 puts("Done.\nInitilizing RS232...");
 	_RS232_init();
+puts("Done.\nInitilizing ThreadMan...");
+	_THREAD_MAN_init();
 puts("Done.\nInstalling Timer...");
-	timer_install ();
-	_8259_Enable_IRQ(0);
+	_TIMER_init();
 puts("Done.\nInitilizing i8042...");
 			bool _8042_init_stat = _8042_init();
 			if (_8042_init_stat == 2) {

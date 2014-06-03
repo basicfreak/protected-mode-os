@@ -285,7 +285,7 @@ void putch(char charactor)
 			curX = 0;
 			curY ++;
 		}
-		while (curY >= ROWS)
+		while (curY >= (ROWS-2))
 			scrollScreen ();
 	}
 	return;
@@ -305,14 +305,26 @@ void movcur(int x, int y)
 	return;
 }
 
+void setPos(int x, int y)
+{
+	curX = x;
+	curY = y;
+}
+
+void getPos(int x, int y)
+{
+	x = curX;
+	y = curY;
+}
+
 void scrollScreen()
 {
 	unsigned short *VIDMEM = (unsigned short *) 0xb8000;
 	int i;
-	for (i=0; i < (ROWS-1)*COLS; i++)
-		VIDMEM[i] = VIDMEM[i+80];
-	for (i=(ROWS-1)*COLS; i < ROWS*COLS; i++)
-		//VIDMEM[i] = color | ' ';
+	/*for (i=0; i < (ROWS-3)*COLS; i++) //-1
+		VIDMEM[i] = VIDMEM[i+80];*/
+	memcpy(VIDMEM, VIDMEM+80, (ROWS-3)*COLS*2);
+	for (i=(ROWS-3)*COLS; i < (ROWS-2)*COLS; i++) //0
 		VIDMEM[i] = 0x20 | (color << 8);
 	curY--;
 	return;

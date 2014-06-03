@@ -120,7 +120,7 @@ bool floppy_waitIRQ()
 	//while (!_FloppyDiskIRQ);
 	int timeout = 10;
 	while ( !_FloppyDiskIRQ && timeout) {
-		timer_wait(1);
+		timer_wait(6);
 		timeout--;
 	}
 	_FloppyDiskIRQ = FALSE;
@@ -195,16 +195,16 @@ void floppy_IRQ_handle(uint32_t* st0, uint32_t* cyl)
 		if (FIFO_ready()) {
 			FIFO_write(SENSE_INTERRUPT);
 			//outb(FIFO, SENSE_INTERRUPT);
-			timer_wait(1);
+			timer_wait(6);
 			*st0 = FIFO_read();
 			//*st0 = inb (FIFO);
-			timer_wait(1);
+			timer_wait(6);
 			*cyl = FIFO_read();
 			//*cyl = inb (FIFO);
 			//while (!FIFO_ready()) FIFO_read();
 			if (debug) puts("IRQ HANDLED\n");
 			return;
-		} else timer_wait(1);
+		} else timer_wait(6);
 	}
 }
 bool floppy_changed()
@@ -220,7 +220,7 @@ void floppy_motor(bool on)
 		DOR_write (0x0C | floppy_drive_number  | FLOPPY_MOTOR_LIST[floppy_drive_number]);
 	else
 		DOR_write (0x0C | floppy_drive_number);
-	timer_wait(4);
+	timer_wait(20);
 }
 void floppy_speed(int speed) //0=500KB\s 1=300KB\s 2=250KB\s 3=1MB\s
 {

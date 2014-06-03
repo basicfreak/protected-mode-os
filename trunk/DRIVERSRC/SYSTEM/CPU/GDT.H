@@ -6,15 +6,16 @@
 	#define				GDT_H_INCLUDED
 	
 	#include <FORMATTING.H>
+	#define DEBUG
 	
 	enum I86_GDT_DESC {
-		_ACCESS=0x0001,			//00000001
-		_READWRITE=0x0002,		//00000010
-		_EXPANSION=0x0004,		//00000100
-		_EXEC_CODE=0x0008,		//00001000
-		_CODEDATA=0x0010,		//00010000
-		_DPL=0x0060,			//01100000
-		_MEMORY=0x0080			//10000000
+		_ACCESS=0x01,			//00000001
+		_READWRITE=0x02,		//00000010
+		_EXPANSION=0x04,		//00000100
+		_EXEC_CODE=0x08,		//00001000
+		_CODEDATA=0x10,			//00010000
+		_DPL=0x60,				//01100000
+		_MEMORY=0x80			//10000000
 	};
 	enum I86_GDT_GRAND {
 		_LIMITHI_MASK=0x0f,		//00001111
@@ -22,7 +23,7 @@
 		_32BIT=0x40,			//01000000
 		_4K=0x80				//10000000
 	};
-
+//_4K | _32BIT | _LIMITHI_MASK)
 	
 	struct gdt_entry
 	{
@@ -47,5 +48,8 @@
 	
 	void install_ring(uint8_t num, uint32_t base, uint32_t limit, uint8_t access, uint8_t gran);
 	void _GDT_init(void);
+	#ifdef DEBUG
+		void _GDT_debug(void);
+	#endif
 	
 #endif

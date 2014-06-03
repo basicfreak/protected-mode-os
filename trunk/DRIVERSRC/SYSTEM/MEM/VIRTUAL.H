@@ -25,9 +25,9 @@
 	struct ptable {
 		pt_entry m_entries[PAGES_PER_TABLE];
 	};
-	struct pdirectory {
+	typedef struct pdirectory {
 		pd_entry m_entries[PAGES_PER_DIR];
-	};
+	} pdir_t;
 	
 	void MmMapPage (void* phys, void* virt);
 	void vmmngr_initialize ();

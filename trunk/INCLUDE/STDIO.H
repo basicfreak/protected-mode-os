@@ -27,6 +27,8 @@
 	void				printfc(int cSet, char *message, ...);
 	void				putch(char charactor);
 	void				movcur(int x, int y);
+	void				setPos(int x, int y);
+	void				getPos(int x, int y);
 	void				scrollScreen();
 	void				cls();
 	void				setColor(int cSet);

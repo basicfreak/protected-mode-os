@@ -13,16 +13,9 @@
 #include "../DRIVERSRC/HARDWARE/PCI.H"
 #include "../DRIVERSRC/SYSTEM/CPU/INT.H"
 
-extern void _INT_30_TEST(void);
-void _INT_30_HANDLE(regs *r)
-{	
-	printf("INT 0x30 Has Been Called ;)\nEAX = 0x%x\tEBX = 0x%x\n", r->eax, r->ebx);
-}
-
-void _INT_TESTINSTALL()
-{
-	install_INT(0, _INT_30_HANDLE);
-}
+extern void _GDT_debug(void);
+extern void _TSS_debug(void);
+extern void INT(uint8_t num, uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx, uint32_t esi, uint32_t edi);
 
 void cmd_read (int sec, int num);
 void cat(char* path);
@@ -101,7 +94,7 @@ void do_CMD(int args)
 	else if (streql(explode_cmd[0], "dir"))
 		dirTest();
 	else if (streql(explode_cmd[0], "user")) {
-		uint16_t EsP = 0;
+		uint32_t EsP = 0;
 		extern void tss_set_stack (uint16_t kernelSS, uint16_t kernelESP);
 		extern void enter_usermode();
 		__asm__ __volatile__ ("mov %%esp, %0":"=g"(EsP));
@@ -109,10 +102,36 @@ void do_CMD(int args)
 		enter_usermode();
 		puts("Welcome to User Land!\n");
 	}
-	else if (streql(explode_cmd[0], "initint30"))
-		_INT_TESTINSTALL();
 	else if (streql(explode_cmd[0], "int30"))
-		_INT_30_TEST();
+		INT(0x30, 0xAAAA, 0xBBBBB, 0xCCCCCC, 0xDDDDDDD, 0x7FFFFFFF, 0x123);
+	else if (streql(explode_cmd[0], "int31")) {
+		char* StringMe = "Test String INT 31\n";
+		uint8_t color = 0x2F;
+		uint8_t command = 0x14;  // Move Cursor - Puts String
+		uint8_t X = 2;
+		uint8_t Y = 10;
+		/*// al = Command
+	// ah = Color
+	// esi = char* pointer
+	// bl = X
+	// bh = Y
+	uint8_t command = (r->eax & 0xFF);
+	uint8_t color = (r->eax >> 8) & 0xFF;
+	char* StringTemp = (char*) r->esi;
+	uint8_t backupColor = getColor();
+	int X = (r->ebx & 0xFF);
+	int Y = (r->ebx >> 8) & 0xFF;*/
+		//INT(uint8_t num, uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx, uint32_t esi, uint32_t edi)
+		INT(0x31, (uint32_t) (((color << 8) &0xFF00) | command), (uint32_t) ((Y << 8) | X), 0, 0, (uint32_t) StringMe, 0);
+	}
+	else if (streql(explode_cmd[0], "gdt"))
+		_GDT_debug();
+	else if (streql(explode_cmd[0], "tss"))
+		_TSS_debug();
+	else if (streql(explode_cmd[0], "test")) {
+		extern void test(void);
+		test();
+	}
 	else
 		printf("Invalid Command \"%s\"\n", cmd_command);
 }

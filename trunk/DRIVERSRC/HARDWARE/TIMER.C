@@ -3,58 +3,34 @@
 */
 
 #include "TIMER.H"
-#include "../SYSTEM/CPU/IRQ.H"
+#include "../SYSTEM/CPU/8259.H"
 #include <STDIO.H>
+#include "../SYSTEM/API/THREADMAN.H"
 
-/* Handles the timer. In this case, it's very simple: We
-*  increment the 'timer_ticks' variable every time the
-*  timer fires. By default, the timer fires 18.222 times
-*  per second. Why 18.222Hz? Some engineer at IBM must've
-*  been smoking something funky */
-void timer_handler(regs *r)
+void PIT_TASK_IR(tregs *r)
 {
     /* Increment our 'tick count' */
     timer_ticks++;
-
-    /* Every 18 clocks (approximately 1 second), we will
-    *  display a message on the screen */
-    if (timer_ticks % 18 == 0)
-    {
-        timer_seconds ++;
-		if (timer_seconds >= 60)
-		{
-			timer_minutes ++;
-			timer_seconds = timer_seconds - 60;
-		}
-		if (timer_minutes >= 60)
-		{
-			timer_hours ++;
-			timer_minutes = timer_minutes - 60;
-		}
-		if (timer_hours >= 24)
-		{
-			timer_days ++;
-			timer_hours = timer_hours - 24;
-		}
-		if (timer_days >= 365)
-		{
-			timer_years ++;
-			timer_days = timer_days - 365;
-		}
-		if(UPTIME_ACTIVE) display_uptime();
-    }
+	if(_THREADMAN_ACTIVE_)
+		_THREAD_MAN_PIT_ENTRY(r);
+	if (timer_ticks % 15 == 0 && UPTIME_ACTIVE) display_uptime(r); //update every 150 ms
 }
-void display_uptime()
+void display_uptime(tregs *r)
 {
 	movcur_disable ++;
+	scroll_disable ++;
 	int tempX = curX;
 	int tempY = curY;
-	curX = 40;
+	curX = 0;
+	curY = 23;
+	printf("EAX = 0x%x; EBX = 0x%x; ECX = 0x%x; EDX = 0x%x;         ", r->eax, r->ebx, r->ecx, r->edx);
+	curX = 0;
 	curY = 24;
-	printf	("%i Years, %i Days, %i:%i:%i Uptime!   ", timer_years, timer_days, timer_hours, timer_minutes, timer_seconds);
+	printf("CS = 0x%x; DS = 0x%x; ESI = 0x%x; EIP = 0x%x;EFLAGS = 0x%x;         ", r->cs, r->ds, r->esi, r->eip, r->eflags);
 	curX = tempX;
 	curY = tempY;
 	movcur_disable --;
+	scroll_disable --;
 	return;
 }
 
@@ -68,20 +44,19 @@ void timer_wait(unsigned int ticks)
 
 void sleep(unsigned int secs)
 {
-	while(secs--) timer_wait(18);
+	while(secs--) timer_wait(100);
 	return;
 }
 
 /* Sets up the system clock by installing the timer handler into IRQ0 */
-void timer_install()
+void _TIMER_init()
 {
 	UPTIME_ACTIVE = TRUE;
-	timer_seconds = 0;
-	timer_minutes = 0;
-	timer_hours = 0;
-	timer_days = 0;
-	timer_years = 0;
 	timer_ticks = 0;
-    /* Installs 'timer_handler' to IRQ0 */
-    install_IR(0, timer_handler);
+	// Set To send IRQ at 100.007Hz 11931     int divisor = 1193180 / hz;
+	outb(0x43, 0x36);
+	outb(0x40, 0x9B);
+	outb(0x40, 0x2E);
+    /* Unmask IRQ0 */
+    _8259_Enable_IRQ(0);
 }
