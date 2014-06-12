@@ -8,6 +8,7 @@
 #include <STDIO.H>
 #include "../DRIVERSRC/HARDWARE/FDC.H"
 #include "../DRIVERSRC/SYSTEM/MEM/PHYSICAL.H"
+#include "../DRIVERSRC/SYSTEM/API/THREADMAN.H"
 #include "../DRIVERSRC/SYSTEM/FS/VFS.H"
 #include "../DRIVERSRC/SYSTEM/FS/FAT12.H"
 #include "../DRIVERSRC/HARDWARE/PCI.H"
@@ -20,6 +21,7 @@ extern void INT(uint8_t num, uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t 
 void cmd_read (int sec, int num);
 void cat(char* path);
 void help(void);
+void load(char* path);
 
 char *CurrentPath;
 char cmd_command[1024];
@@ -94,16 +96,12 @@ void do_CMD(int args)
 	else if (streql(explode_cmd[0], "dir"))
 		dirTest();
 	else if (streql(explode_cmd[0], "user")) {
-		uint32_t EsP = 0;
-		extern void tss_set_stack (uint16_t kernelSS, uint16_t kernelESP);
 		extern void enter_usermode();
-		__asm__ __volatile__ ("mov %%esp, %0":"=g"(EsP));
-		tss_set_stack(0x10, EsP);
 		enter_usermode();
 		puts("Welcome to User Land!\n");
 	}
 	else if (streql(explode_cmd[0], "int30"))
-		INT(0x30, 0xAAAA, 0xBBBBB, 0xCCCCCC, 0xDDDDDDD, 0x7FFFFFFF, 0x123);
+		INT(0x30, 0, 0, 0, 0, (uint32_t) &explode_cmd[1], 0);
 	else if (streql(explode_cmd[0], "int31")) {
 		char* StringMe = "Test String INT 31\n";
 		uint8_t color = 0x2F;
@@ -129,9 +127,14 @@ void do_CMD(int args)
 	else if (streql(explode_cmd[0], "tss"))
 		_TSS_debug();
 	else if (streql(explode_cmd[0], "test")) {
-		extern void test(void);
-		test();
+		fsysFatInitialize ();
+		load("test.bin");
 	}
+	else if (streql(explode_cmd[0], "load")) {
+		load(explode_cmd[1]);
+	}
+	else if (streql(explode_cmd[0], "kill"))
+		KillThread((uint16_t) textTOhex(explode_cmd[1]));
 	else
 		printf("Invalid Command \"%s\"\n", cmd_command);
 }
@@ -214,4 +217,41 @@ void cat(char* path)
 	}
 	//! done :)
 	printf ("\n\n\r--------[EOF]--------\n");
+}
+
+void load(char* path)
+{
+	//! open file
+	FILE file = VFS_OpenFile (path);
+	//! test for invalid file
+	if (file.flags == FS_INVALID) {
+		printf ("\n\rUnable to open file\n");
+		return;
+	}
+	//! cant display directories
+	if (( file.flags & FS_DIRECTORY ) == FS_DIRECTORY) {
+		printf ("\n\rUnable to display contents of directory.\n");
+		return;
+	}
+	_THREADMAN_ACTIVE_ = false;
+	uint16_t task = AddThread(0x800000, 0xFF, true);
+	printf("location = 0x%x\n", THREAD[task].physaddr);
+	uint8_t *location = (uint8_t*) THREAD[task].physaddr;
+	//! top line
+	//! display file contents
+	int x = 0;
+	while (file.eof != 1) {
+		//! read cluster
+		unsigned char buf[512];
+		VFS_ReadFile ( &file, buf, 512);
+		//! display file
+		///for (int i=0; i<512; i++)
+			memcpy (&location[x*0x200], buf, 0x200);
+		x++;
+		//! wait for input to continue if not EOF
+	}
+	printf("location = 0x%x\n", &location[0]);
+	THREAD[task].flags = 0x01;
+	_THREADMAN_ACTIVE_ = true;
+	//! done :)
 }

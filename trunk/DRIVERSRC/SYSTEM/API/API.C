@@ -4,7 +4,8 @@
 
 #include "API.H"
 #include "../CPU/INT.H"
-
+#include "THREADMAN.H"
+#include "../FS/VFS.H"
 #include <STDIO.H>
 
 /* INT 0x30: Standard Inputs
@@ -12,30 +13,7 @@ AL = Command (X | X | X | X | X | Mouse | gets | getch)
 */
 void _API_INT_30(regs *r)
 {
-	//printf("INT 0x30 Has Been Called ;)\nEAX = 0x%x\tEBX = 0x%x\tECX = 0x%x\tEDX = 0x%x\nESI = 0x%x\tEDI = 0x%x\n", r->eax, r->ebx, r->ecx, r->edx, r->esi, r->edi);
-	movcur(ROWS - 1, COLS - 1);
-	movcur_disable ++;
-	setColor		(0x0F);
-	cls();
-	__asm__ __volatile__ ("cli");
-	puts("So long, farewell\nAuf Wiedersehen, goodnight\n\n");
-	puts("I hate to go and leave this pretty sight\n\nSo long, farewell\nAuf Wiedersehen, adieu\n\n");
-	puts("Adieu, adieu\nTo you and you and you\n\n...\n\n");
-	puts("The sun has gone\nTo bed and so must I\n\n");
-	puts("So long, farewell\nAuf Wiedersehen, goodbye\n\n");
-	puts("Goodbye\nGoodbye\nGoodbye\n\nGoodbye");
-	setColor		(0x0E);
-	curX = (COLS / 2) - 17;
-	curY = ((ROWS - 1) / 2) - 1;
-	puts("        So sad to see you go");
-	curX = (COLS / 2) - 17;
-	curY = ((ROWS + 1) / 2) - 1;
-	puts("It is safe to turn off your computer");
-	curX = (COLS / 2) - 17;
-	curY = ROWS - 1;
-	puts("             GOOD BYE!");
-	__asm__ __volatile__ ("hlt");
-	for(;;);
+	printf("INT 0x30 Has Been Called ;)\nEAX = 0x%x\tEBX = 0x%x\tECX = 0x%x\tEDX = 0x%x\nESI = 0x%x\tEDI = 0x%x\n", r->eax, r->ebx, r->ecx, r->edx, r->esi, r->edi);
 }
 
 

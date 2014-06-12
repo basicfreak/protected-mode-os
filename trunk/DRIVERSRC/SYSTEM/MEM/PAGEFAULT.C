@@ -37,13 +37,31 @@ void pageFault_handler(regs *r)
 	printf("GS = 0x%x\tFS = 0x%x\tES = 0x%x\tDS = 0x%x\n", r->gs, r->fs, r->es, r->ds);
 	printf("EIP = 0x%x\tCS = 0x%x\tEFLAGS = 0x%x\tSS = 0x%x\n", r->eip, r->cs, r->eflags, r->ss);
 	printf("USER-ESP = 0x%x\tERROR-CODE = 0x%x\n", r->useresp, r->err_code);
-	puts ("\n\nSystem  Halted\n");
-	__asm__ __volatile__ ("cli");
-	__asm__ __volatile__ ("hlt");
-	for(;;);
+	
+	uint32_t _cr0 = 0;
+	uint32_t _cr2 = 0;
+	uint32_t _cr3 = 0;
+	uint32_t _cr4 = 0;
+	__asm__ __volatile__ ("mov %%cr0, %0":"=b"(_cr0));
+	__asm__ __volatile__ ("mov %%cr2, %0":"=b"(_cr2));
+	__asm__ __volatile__ ("mov %%cr3, %0":"=b"(_cr3));
+	__asm__ __volatile__ ("mov %%cr4, %0":"=b"(_cr4));
+	
+	printf("CR0 = 0x%x\tCR2 = 0x%x\tCR3 = 0x%x\tCR4 = 0x%x\n", _cr0, _cr2, _cr3, _cr4);
+	
+	if (r->cs == 0x08) {		//KERNEL LEVEL
+		puts ("\t\t\t\t\t\t\t\t System  Halted\n");
+		__asm__ __volatile__ ("cli");
+		__asm__ __volatile__ ("hlt");
+		for (;;);
+	} else {
+		puts ("\t\t\t\t\t\t\t\t Attempting Restoration\n");
+		extern void KillCurrentThreadISRs(regs *r);
+		KillCurrentThreadISRs(r);
+	}
 }
 
-void init_pageFault()
+void _pageFault_init()
 {
 	install_ISR(14, pageFault_handler);
 }

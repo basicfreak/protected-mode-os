@@ -113,7 +113,7 @@ int explode( char out[50][100], const char *s1, const char s2 )
 	}
 	return i;
 }
-bool streql( const char *s1, const char *s2 )
+bool streql( char *s1, char *s2 )
 {
 	int temp = strcmp (s1, s2);
 	if (temp == 0) return TRUE;

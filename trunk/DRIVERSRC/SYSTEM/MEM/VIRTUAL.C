@@ -1,178 +1,129 @@
 /*
-./LIBSRC/MEM/VIRTUAL.C
+./DRIVERSRC/SYSTEM/MEM/VIRTUAL.C
 */
 
-#include <STDIO.H>
 #include "VIRTUAL.H"
+#include "PAGEFAULT.H"
+#include "../../HARDWARE/RS232.H"
+#include <STDIO.H>
+//IN START.ASM:
+extern void enable_paging(void);
+extern void disable_paging(void);
 
-struct pdirectory* _cur_directory=0;
-physical_addr _cur_pdbr=0;
+pdir_p KERNEL_PAGE_DIR;
 
-void MmMapPage (void* phys, void* virt)
+Page_Entry Create_Page(paddr physical, bool user, bool write)
 {
-	struct pdirectory* pageDirectory = vmmngr_get_directory ();
-
-   // get page table
-   pd_entry* e = &pageDirectory->m_entries [PAGE_DIRECTORY_INDEX ((uint32_t) virt) ];
-   if ( (*e & I86_PTE_PRESENT) != I86_PTE_PRESENT) {
-
-      // page table not present, allocate it
-      struct ptable* table = (struct ptable*) pmmngr_alloc_block ();
-      if (!table)
-         return;
-
-      // clear page table
-      memset (table, 0, 4096);
-
-      // create a new entry
-      pd_entry* entry =
-         &pageDirectory->m_entries [PAGE_DIRECTORY_INDEX ( (uint32_t) virt) ];
-
-      // map in the table (Can also just do *entry |= 3) to enable these bits
-      pd_entry_add_attrib (entry, I86_PDE_PRESENT);
-      pd_entry_add_attrib (entry, I86_PDE_WRITABLE);
-      pd_entry_set_frame (entry, (physical_addr)table);
-   }
-
-   // get table
-   struct ptable* table = (struct ptable*) PAGE_GET_PHYSICAL_ADDRESS ( e );
-
-   // get page
-   pt_entry* page = &table->m_entries [ PAGE_TABLE_INDEX ( (uint32_t) virt) ];
-
-   // map it in (Can also do (*page |= 3 to enable..)
-   pt_entry_set_frame ( page, (physical_addr) phys);
-   pt_entry_add_attrib ( page, I86_PTE_PRESENT);
+	Page_Entry e = I86_PTE_PRESENT;
+	if (user)
+		e |= I86_PTE_USER;
+	if (write)
+		e |= I86_PTE_WRITABLE;
+	e = (e & ~I86_PTE_FRAME) | physical;
+	return e;
 }
 
-void vmmngr_initialize ()
+void Add_Table_To_Dir(uint32_t index, ptbl_p table, pdir_p dir, bool user, bool write)
 {
-	//allocate default page table
-	struct ptable* table = (struct ptable*) pmmngr_alloc_block ();
-	if (!table)
-	  return;
+	uint32_t *entry = (uint32_t*) &dir->table [index];
+	*entry = I86_PDE_PRESENT;
+	if (user)
+		*entry |= I86_PDE_USER;
+	if (write)
+		*entry |= I86_PDE_WRITABLE;
+	*entry = (*entry & ~I86_PDE_FRAME) | (uint32_t)table;
+}
 
-	
+void setPaging(bool enable)
+{
+	if (enable)
+		enable_paging();
+	else
+		disable_paging();
+}
 
-	// clear page table
-	memset (table, 0, sizeof (struct ptable));
+void setPageDirectroy(pdir_p dir)
+{
+	__asm__ __volatile__ ("mov %0, %%cr3":: "b"(dir));
+}
 
-	// 1st 8mb are idenitity mapped 1-4MB kernel space 4-8mb user space
-	for (int i=0, frame=0x0, virt=0x00000000; i<1024; i++, frame+=4096, virt+=4096) {
-		pt_entry page=0;
-		pt_entry_add_attrib (&page, I86_PTE_PRESENT);
-		pt_entry_add_attrib (&page, I86_PTE_USER);
-		pd_entry_add_attrib (&page, I86_PDE_WRITABLE);
-		pt_entry_set_frame (&page, frame);
-		table->m_entries [PAGE_TABLE_INDEX (virt) ] = page;
-	}
-	
-	// create default directory table
-	struct pdirectory*   dir = (struct pdirectory*) pmmngr_alloc_blocks (3);
-	if (!dir)
+pdir_t *Kernel_Page_Dir_Address()
+{
+	return (pdir_t *) KERNEL_PAGE_DIR;
+}
+
+void _VMem_init()
+{
+	// Allocate Kernel page directory
+	KERNEL_PAGE_DIR = (pdir_p) calloc(3);
+	if (!KERNEL_PAGE_DIR)
 		return;
 
-	// clear directory table and set it as current
-	memset (dir, 0, sizeof (struct pdirectory));
-
-	// get first entry in dir table and set it up to point to our table
-
-
-	pd_entry* entry = &dir->m_entries [PAGE_DIRECTORY_INDEX (0x0) ];
-	pd_entry_add_attrib (entry, I86_PDE_PRESENT);
-	pt_entry_add_attrib (entry, I86_PDE_USER);
-	pd_entry_add_attrib (entry, I86_PDE_WRITABLE);
-	pd_entry_set_frame (entry, (physical_addr)table);
-
-	// store current PDBR
-	_cur_pdbr = (physical_addr) &dir->m_entries;
-
+	// Map Table With All RAM in system identically mapped
+	uint32_t frame = 0, virt = 0;//, x = 0;
+	for(int x = 0; x < (_mmngr_memory_size / 0x1000); x++) {	
+		// Allocate a page table
+		ptbl_p table = (ptbl_p) calloc(1);
+		if (!table)
+			return;
+		for (int i=0; i<PAGES_PER_TABLE; i++, frame+=PAGE_SIZE, virt+=PAGE_SIZE) {
+			// Create Page
+			Page_Entry page = Create_Page(frame, true, true);
+			// Add Page To Table
+			table->page[i] = page;
+		}
+		// Add Table To Directory
+		Add_Table_To_Dir(x, table, KERNEL_PAGE_DIR, true, true);
+	}
+	
+	// Setup Page Fault Handler
+	_pageFault_init();
+	
 	// switch to our page directory
-	vmmngr_switch_pdirectory (dir);
+	setPageDirectroy (KERNEL_PAGE_DIR);
 
 	// enable paging
-	pmmngr_paging_enable (true);
+	setPaging (true);
 }
 
-bool vmmngr_alloc_page (pt_entry* e)
+
+/*typedef struct Process_Return {
+		pdir_p dir;
+		uint32_t location;
+		uint32_t size;
+	} p_ret;*/
+pdir_p Create_Process_Directory(uint32_t process_size_bytes, uint32_t *physical_location)
 {
-	void* p = pmmngr_alloc_block ();
-	if (!p)
-		return false;
-
-	//map it to the page
-	pt_entry_set_frame (e, (physical_addr)p);
-	pt_entry_add_attrib (e, I86_PTE_PRESENT);
-	//doesn't set WRITE flag...
-
-	return true;
-}
-
-void vmmngr_free_page (pt_entry* e)
-{
-	void* p = (void*)pt_entry_pfn (*e);
-	if (p)
-		pmmngr_free_block (p);
-
-	pt_entry_del_attrib (e, I86_PTE_PRESENT);
-}
-
-bool vmmngr_switch_pdirectory (struct pdirectory* dir)
-{
-	if (!dir)
-		return false;
-
-	_cur_directory = dir;
-	pmmngr_load_PDBR (_cur_pdbr);
-	return true;
-}
-
-struct pdirectory* vmmngr_get_directory ()
-{
-	return _cur_directory;
-}
-
-void vmmngr_flush_tlb_entry (virtual_addr addr)
-{
-	/*#ifdef _MSC_VER
-	_asm {
-		cli
-		invlpg	addr
-		sti
+	pdir_p ret = (pdir_p) calloc(3);
+	*physical_location = (uint32_t) calloc(process_size_bytes / PAGE_SIZE);
+	// Setup directory...
+	// Stack
+	paddr *stack = calloc(2);		//8KB stack for process ends at 0xC0000000 Virtual
+	ptbl_p tablestack = (ptbl_p) calloc(1);								//C0000000
+	Page_Entry stackpage0 = Create_Page((uint32_t)stack, true, true);	//BFFFE000
+	Page_Entry stackpage1 = Create_Page(((uint32_t)stack)+0x1000, true, true);
+	tablestack->page[1022] = stackpage0;
+	tablestack->page[1023] = stackpage1;
+	Add_Table_To_Dir(0x2FF, tablestack, ret, true, true);
+	// Process Code/Data/Bss (its the file from disk hopefully)
+	uint32_t frame = *physical_location;
+	uint32_t virt = 0x800000;
+	for(int x = 2; x <= (process_size_bytes / PAGE_SIZE)+1; x++)	// process offset = 0x800000 / 6MB
+	{
+		// Allocate a page table
+		ptbl_p table = (ptbl_p) calloc(1);
+		if (!table)
+			return 0;
+		for (int i = 0; i<PAGES_PER_TABLE; i++, frame+=PAGE_SIZE, virt+=PAGE_SIZE) {
+			// Create Page
+			Page_Entry page = Create_Page(frame, true, true);
+			// Add Page To Table
+			table->page[i] = page;
+		}
+		// Add Table To Directory
+		Add_Table_To_Dir(x, table, ret, true, true);
 	}
-	#endif*/
-}
-
-/**void vmmngr_ptable_clear (struct ptable* p)
-{
-	
-}
-
-uint32_t vmmngr_ptable_virt_to_index (virtual_addr addr)
-{
-	
-}*/
-
-pt_entry* vmmngr_ptable_lookup_entry (struct ptable* p,virtual_addr addr)
-{
-	if (p)
-		return &p->m_entries[ PAGE_TABLE_INDEX (addr) ];
-	return 0;
-}
-
-/**uint32_t vmmngr_pdirectory_virt_to_index (virtual_addr addr)
-{
-	
-}
-
-void vmmngr_pdirectory_clear (struct pdirectory* dir)
-{
-	
-}*/
-
-pd_entry* vmmngr_pdirectory_lookup_entry (struct pdirectory* p, virtual_addr addr)
-{
-	if (p)
-		return &p->m_entries[ PAGE_TABLE_INDEX (addr) ];
-	return 0;
+	Add_Table_To_Dir(0, KERNEL_PAGE_DIR->table[0], ret, false, false);
+	Add_Table_To_Dir(1, KERNEL_PAGE_DIR->table[1], ret, false, false);
+	return ret;
 }

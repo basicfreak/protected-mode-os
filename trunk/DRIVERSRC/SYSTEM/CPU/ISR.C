@@ -4,6 +4,7 @@
 
 #include "ISR.H"
 #include "IDT.H"
+#include "DISASM.H"
 #include <STDIO.H>
 
 
@@ -111,13 +112,14 @@ void ISR_HANDLER(regs *r)
 	// Get ISRS Resolve Routine
 	ISR = ISRs[r->int_no];
 	// Do we have a valid Routine?
+	void KillCurrentThreadISRs(regs *r);
 	if (ISR)
 		ISR(r);
 	else
 		iError(r);	// No Routine BSoD time.
 }
 
-void iError(regs *r)						//Reason is Exception Name
+void iError(regs *r)
 {
 	setColor (0x1F);
 	cls ();
@@ -134,16 +136,52 @@ void iError(regs *r)						//Reason is Exception Name
 		uint32_t int_no, err_code;
 		uint32_t eip, cs, eflags, useresp, ss;    
 	} regs;*/
-	printf("EAX = 0x%x\nEBX = 0x%x\nECX = 0x%x\nEDX = 0x%x\n", r->eax, r->ebx, r->ecx, r->edx);
-	printf("EDI = 0x%x\nESI = 0x%x\nEBP = 0x%x\nESP = 0x%x\n", r->edi, r->esi, r->ebp, r->esp);
-	printf("GS = 0x%x\nFS = 0x%x\nES = 0x%x\nDS = 0x%x\n", r->gs, r->fs, r->es, r->ds);
-	printf("EIP = 0x%x\nCS = 0x%x\nEFLAGS = 0x%x\nSS = 0x%x\n", r->eip, r->cs, r->eflags, r->ss);
-	printf("USER-ESP = 0x%x\nERROR-CODE = 0x%x\n", r->useresp, r->err_code);
+	printf("EAX = 0x%x\tEBX = 0x%x\tECX = 0x%x\tEDX = 0x%x\n", r->eax, r->ebx, r->ecx, r->edx);
+	printf("EDI = 0x%x\tESI = 0x%x\tEBP = 0x%x\tESP = 0x%x\n", r->edi, r->esi, r->ebp, r->esp);
+	printf("GS = 0x%x\tFS = 0x%x\tES = 0x%x\tDS = 0x%x\n", r->gs, r->fs, r->es, r->ds);
+	printf("EIP = 0x%x\tCS = 0x%x\tEFLAGS = 0x%x\tSS = 0x%x\n", r->eip, r->cs, r->eflags, r->ss);
+	printf("USER-ESP = 0x%x\tERROR-CODE = 0x%x\n\n", r->useresp, r->err_code);
+	uint32_t ramstart = (r->eip - 0x10);
+	uint32_t ramend = (r->eip + 0x10);
+	printf("RAM[0x%x - 0x%x]:\n", ramstart, ramend);
+	uint8_t *RAMLOC = 0x0;
+	for(uint32_t loc=ramstart; loc <= ramend; loc++)
+	{
+		if (loc != r->eip)
+			printf("%x ", RAMLOC[loc]);
+		else
+			printfc(0x0F, "%x ", RAMLOC[loc]);
+	}
+	putch('\n');
+	putch('\n');
+	for(uint32_t loc=ramstart; loc <= ramend; loc++)
+	{
+		if (loc != r->eip)
+			printf("%s ", DisASM(RAMLOC[loc]));
+		else
+			printfc(0x0F, "%s ", DisASM(RAMLOC[loc]));
+	}
+	putch('\n');
+	putch('\n');
+	for(uint32_t loc=ramstart; loc <= ramend; loc++)
+	{
+		if (loc != r->eip)
+			printf("%c ", RAMLOC[loc]);
+		else
+			printfc(0x0F, "%c ", RAMLOC[loc]);
+	}
+	putch('\n');
 	
 //END HEX
 	setColor (0x94);
-	puts ("\t\t\t\t\t\t\t\t System  Halted\n");
-	__asm__ __volatile__ ("cli");
-	__asm__ __volatile__ ("hlt");
-	for (;;);
+	if (r->cs == 0x08) {		//KERNEL LEVEL
+		puts ("\t\t\t\t\t\t\t\t System  Halted\n");
+		__asm__ __volatile__ ("cli");
+		__asm__ __volatile__ ("hlt");
+		for (;;);
+	} else {
+		puts ("\t\t\t\t\t\t\t\t Attempting Restoration\n");
+		extern void KillCurrentThreadISRs(regs *r);
+		KillCurrentThreadISRs(r);
+	}
 }

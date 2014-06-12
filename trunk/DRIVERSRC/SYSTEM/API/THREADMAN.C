@@ -4,6 +4,7 @@
 
 #include "THREADMAN.H"
 #include <STDIO.H>
+#include "../CPU/IRQ.H"
 
 uint16_t Current_Thread = 1; // 0 always refers to idle thread - 1 will be kernel all info will be saved on first task switch (hopefully...)
 
@@ -16,25 +17,23 @@ void _THREAD_MAN_PIT_ENTRY(tregs *r)
 	memcpy(&THREAD[Current_Thread].registers, r, sizeof(tregs));
 	// Find next thread
 	uint16_t Next_Thread;
-	/*bool found = FALSE;
-	for (Next_Thread = Current_Thread; ((Next_Thread < MAX_THREADS) && (!found) && (THREAD[Next_Thread].flags)); Next_Thread++)
-		if (THREAD[Next_Thread].flags < 0x80)
-			found = true;
-	if (!found)
-		for (Next_Thread = 0; ((Next_Thread <= Current_Thread) && (!found) && (THREAD[Next_Thread].flags)); Next_Thread++)
-			if (THREAD[Next_Thread].flags < 0x80)
-				found = true;
-	if (!found)*/
+	/*if(THREAD[2].flags != 0x01) {
 		if (Current_Thread) Next_Thread = 0;
 		else Next_Thread = 1;
-		/*if(forceidleonecycle) {
+	} else {
+		if (Current_Thread == 0) Next_Thread = 1;
+		else if (Current_Thread == 1) Next_Thread = 2;
+		else Next_Thread = 0;
+	}*/
+	for (Next_Thread = Current_Thread + 1; THREAD[Next_Thread].flags != 0x01; Next_Thread++)
+		if (Next_Thread >= MAX_THREADS)
 			Next_Thread = 0;
-			forceidleonecycle = false;
-			memcpy(r, &THREAD[Next_Thread].registers, sizeof(tregs));
-			printf("EIP = 0x%x EFLAGS = 0x%x\n", THREAD[Next_Thread].registers.eip, THREAD[Next_Thread].registers.eflags);
-		} else Next_Thread = 1;*/
+	if (Next_Thread == Current_Thread)
+		Next_Thread = 0;
+		
 	// Load next Thread
 	Current_Thread = Next_Thread;
+	__asm__ __volatile__ ("mov %0, %%cr3":: "b"(THREAD[Current_Thread].cr3));
 	memcpy(r, &THREAD[Current_Thread].registers, sizeof(tregs));
 }
 
@@ -60,11 +59,39 @@ void _THREAD_MAN_disable()
 }
 
 extern uint32_t Kernel_Stack(void);
-void test()
+
+void KillCurrentThreadISRs(regs *r)
 {
-	forceidleonecycle = true;
+	THREAD[Current_Thread].flags = 0;
+	THREAD[Current_Thread].cr3 = 0;
+	Current_Thread = 0;
+	__asm__ __volatile__ ("mov %0, %%cr3":: "b"(THREAD[Current_Thread].cr3));
+	r->gs = THREAD[Current_Thread].registers.gs;
+	r->fs = THREAD[Current_Thread].registers.fs;
+	r->es = THREAD[Current_Thread].registers.es;
+	r->ds = THREAD[Current_Thread].registers.ds;
+	
+	r->edi = THREAD[Current_Thread].registers.edi;
+	r->esi = THREAD[Current_Thread].registers.esi;
+	r->ebp = THREAD[Current_Thread].registers.ebp;
+	r->esp = THREAD[Current_Thread].registers.esp;
+	r->ebx = THREAD[Current_Thread].registers.ebx;
+	r->edx = THREAD[Current_Thread].registers.edx;
+	r->ecx = THREAD[Current_Thread].registers.ecx;
+	r->eax = THREAD[Current_Thread].registers.eax;
+	
+	r->eip = THREAD[Current_Thread].registers.eip;
+	r->cs = THREAD[Current_Thread].registers.cs;
+	r->eflags = THREAD[Current_Thread].registers.eflags;
+	r->useresp = THREAD[Current_Thread].registers.useresp;
+	r->ss = THREAD[Current_Thread].registers.ss;
 }
 
+void KillThread(uint16_t Thread)
+{
+	THREAD[Thread].flags = 0;
+	THREAD[Thread].cr3 = 0;
+}
 uint16_t AddThread(uint32_t location, uint8_t flags, bool user)
 {
 	printf("\n\tAddThread(0x%x, 0x%x, 0x%x) = ", location, flags, user);
@@ -86,7 +113,8 @@ printf ("%i ", task);
 		tempreg.ss = 0x10;
 		tempreg.cs = 0x08;
 		tempreg.useresp = Kernel_Stack();
-		THREAD[task].cr3 = vmmngr_get_directory();
+		THREAD[task].cr3 = Kernel_Page_Dir_Address();//vmmngr_get_directory();
+		THREAD[task].physaddr = 0x100000;
 	} else {			// User Thread
 		tempreg.gs = 0x23;
 		tempreg.fs = 0x23;
@@ -94,8 +122,9 @@ printf ("%i ", task);
 		tempreg.ds = 0x23;
 		tempreg.ss = 0x23;
 		tempreg.cs = 0x1B;
-		tempreg.useresp = 0xC0000000;
+		tempreg.useresp = 0xBFFFFFFF;
 // NEED TO SETUP NEW PDIR FOR USER TASKS... LATER
+		THREAD[task].cr3 = Create_Process_Directory(4096, (uint32_t*) &THREAD[task].physaddr);
 	}					// Common
 	tempreg.eip = (uint32_t)location;
 	tempreg.esp = Kernel_Stack();

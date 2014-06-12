@@ -15,7 +15,6 @@
 #include "../DRIVERSRC/HARDWARE/8042/MOUSE.H"
 #include "../DRIVERSRC/HARDWARE/FDC.H"
 #include "../DRIVERSRC/SYSTEM/MEM/PHYSICAL.H"
-#include "../DRIVERSRC/SYSTEM/MEM/PAGEFAULT.H"
 #include "COMMAND.H"
 #include "../DRIVERSRC/SYSTEM/FS/FAT12.H"
 #include "../DRIVERSRC/HARDWARE/8042/8042.H"
@@ -43,22 +42,29 @@ puts("Done.\nInstalling INT...");
 	_INT_init();
 puts("Done.\nInstalling TSS...");
 	install_tss(5,0x10,0);
+	extern void tss_set_stack (uint16_t kernelSS, uint16_t kernelESP);
+	uint32_t EsP = 0;
+	__asm__ __volatile__ ("mov %%esp, %0":"=g"(EsP));
+	tss_set_stack(0x10, EsP);
+	extern void _FPU_init(void);
+	_FPU_init();
 puts("Done.\nInstalling API...");
 	_API_init();
-puts("Done.\nInstalling Physical Memory Manager...");
-	initPHYSMEM ();
-puts("Done.\nInstalling Virtual Memory Manager...");
-	init_pageFault ();
-	vmmngr_initialize ();
-	__asm__ __volatile__ ("sti");					//DON'T FROGET TO RE-ENABLE INTS OR NOTHING WILL WORK RIGHT!!!!
 puts("Done.\nGetting BIOS Data...");
 	_BIOS_init();
 puts("Done.\nGetting CMOS Data...");
 	readCMOS();
 puts("Done.\nInitilizing PCI...");
 	_PCI_init();
+	__asm__ __volatile__ ("sti");						//DON'T FROGET TO RE-ENABLE INTS OR NOTHING WILL WORK RIGHT!!!!
 puts("Done.\nInitilizing RS232...");
 	_RS232_init();
+puts("Done.\nInstalling Physical Memory Manager...");
+	_PMem_init ();
+puts("Done.\nInstalling Virtual Memory Manager...");
+	_VMem_init();
+
+
 puts("Done.\nInitilizing ThreadMan...");
 	_THREAD_MAN_init();
 puts("Done.\nInstalling Timer...");
@@ -82,8 +88,11 @@ puts("Done.\nInitilizing i8042...");
 	
 puts("Installing FDC...");
 	floppy_install ();
-/*puts("Done.\nInstalling FAT12...");
-	fsysFatInitialize ();*/
+puts("Done.\nInstalling FAT12...");
+	fsysFatInitialize ();/*
+puts("DONE.\nEntering User Land...");
+	extern void enter_usermode();
+	enter_usermode();*/
 puts("Done.\n");
 }
 

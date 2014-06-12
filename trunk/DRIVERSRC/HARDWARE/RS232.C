@@ -251,6 +251,7 @@ void _RS232_init()
 	tx(COM1, 'e');
 	tx(COM1, 's');
 	tx(COM1, 't');
+	tx(COM1, '\n');
 }
 void txc(uint8_t COM, uint8_t data)
 {

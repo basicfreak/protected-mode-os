@@ -125,7 +125,7 @@ void printf(char *message, ...)
 					case 'X':
 					case 'x':
 					{
-						int c = va_arg (ap, int);
+						uint32_t c = va_arg (ap, uint32_t);
 						char s[32]={0};
 						itoa_s (c,16,s);
 						puts(s);
@@ -186,7 +186,7 @@ void printfc(int cSet, char *message, ...) {
 					case 'X':
 					case 'x':
 					{
-						int c = va_arg (ap, int);
+						uint32_t c = va_arg (ap, uint32_t);
 						char s[32]={0};
 						itoa_s (c,16,s);
 						puts(s);

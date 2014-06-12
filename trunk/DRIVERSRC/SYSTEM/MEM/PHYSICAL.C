@@ -1,23 +1,16 @@
 /*
-./LIBSRC/MEM/PHYSICAL.C
+./DRIVERSRC/SYSTEM/MEM/PHYSICAL.C
 */
 
 #include "PHYSICAL.H"
-#include "../CPU/ISR.H"			//for iError();
 #include <STDIO.H>
 
-//IN START.ASM:
-extern void enable_paging(void);
-extern void disable_paging(void);
-
-//Private FUNCTIONS
-uint32_t probeRAM(void);
-void mmap_update(void);
-void initMMAP(void);
+uint32_t *Mem_Map;
+uint32_t Total_Ram;
 
 uint32_t probeRAM() //in KB
 {
-	uint32_t out = 0x7FF; 									//we will start at 2MB and assume you have 2MB of RAM Minimal 1024 bytes = 1kb 1024 kb = 1MB
+	uint32_t out = 0xFFF; 									//we will start at 4MB and assume you have 4MB of RAM Minimal 1024 bytes = 1kb 1024 kb = 1MB
 	bool issue = false;
 	while (!issue) {
 		if (out < 0x4000)
@@ -42,44 +35,41 @@ uint32_t probeRAM() //in KB
 	return out;
 }
 
-void mmap_set (int bit)
-{
-	_mmngr_memory_map[bit / 32] |= (1 << (bit % 32));
-}
-
-void mmap_unset (int bit)
-{
-	_mmngr_memory_map[bit / 32] &= ~ (1 << (bit % 32));
-}
-
 bool mmap_test (int bit)
 {
 	return _mmngr_memory_map[bit / 32] &  (1 << (bit % 32));
 }
 
+void set_used(uint32_t page)
+{
+	Mem_Map[page / 32] |= (1 << (page % 32));
+	_mmngr_free_blocks--;
+	_mmngr_used_blocks++;
+}
+
 int mmap_first_free ()
 {
-	for (uint32_t i=0; i< _mmngr_max_blocks /32; i++)
+	for (uint32_t i=0; i<(_mmngr_max_blocks/32); i++)
 		if (_mmngr_memory_map[i] != 0xffffffff)
 			for (int j=0; j<32; j++) {				// test each bit in the dword
 				int bit = 1 << j;
 				if (! (_mmngr_memory_map[i] & bit) )
-					return i*4*8+j;
+					return (i*32)+j;
 			}
 	return -1;
 }
 
 int mmap_first_free_s (size_t size)
 {
-	if (size==0)
-		return -1;
+	if (size==0) {
+		return -1; }
 	if (size==1)
 		return mmap_first_free ();
 	for (uint32_t i=0; i<_mmngr_max_blocks /32; i++)
-		if (_mmngr_memory_map[i] != 0xffffffff)
+		if (Mem_Map[i] != 0xffffffff)
 			for (int j=0; j<32; j++) {	// test each bit in the dword
 				int bit = 1<<j;
-				if (! (_mmngr_memory_map[i] & bit) ) {
+				if (! (Mem_Map[i] & bit) ) {
 					int startingBit = i*32;
 					startingBit+=bit;		//get the free bit in the dword at index i
 					uint32_t free=0; //loop through each bit to see if its enough space
@@ -94,214 +84,48 @@ int mmap_first_free_s (size_t size)
 	return -1;
 }
 
-void mmap_update()
+void *malloc(uint32_t pages)	// Just Allocate
 {
-	_mmngr_free_blocks = 0;
-	_mmngr_used_blocks = 0;
-	for (uint32_t i=0; i < _mmngr_max_blocks / PMMNGR_BLOCKS_PER_BYTE; i++) {
-		if (_mmngr_memory_map[i] != 0xffffffff)
-			for (int j=0; j<PMMNGR_BLOCKS_PER_BYTE; j++) {				// test each bit in the dword
-				int bit = 1 << j;
-				if (! (_mmngr_memory_map[i] & bit) )
-					_mmngr_free_blocks++;
-				else
-					_mmngr_used_blocks++;
-			}
-		else
-			_mmngr_used_blocks += 32;
-	}
-}
+	if (_mmngr_free_blocks <= pages) {
+		return 0; }	//not enough space
 
-void initMMAP()
-{
-	memset (_mmngr_memory_map, 0x0, _mmngr_max_blocks / PMMNGR_BLOCKS_PER_BYTE );
-	//if (i == 0 || i == 1 || (i >=512 && i < 1024) || (i >= 15360 && i <= 16384) || i >= 3145728) [KBs]
-	mmap_set(0);			//BIOS and IVT plus I want 0 as Error
-	mmap_set(7);			//Bootsector
-	for(uint32_t i = 128; (i < 256) && (i <= _mmngr_max_blocks); i++)
-		mmap_set(i);
-	for(uint32_t i = 3840; (i < 4096) && (i <= _mmngr_max_blocks); i++)
-		mmap_set(i);
-	for(uint32_t i = 786432; (i < _mmngr_max_blocks); i++)
-		mmap_set(i);
-	for(uint32_t i = 256; (i < 512) && (i <= _mmngr_max_blocks); i++)												//KERNEL
-		mmap_set(i);
-	for(uint32_t i = 512; (i < _mmngr_max_blocks / PMMNGR_BLOCKS_PER_BYTE) && (i <= _mmngr_max_blocks); i++)		//MMAP
-		mmap_set(i);
-	mmap_update();
-}
-/*if (i == 0 || i == 1 || (i >=512 && i < 1024) || (i >= 15360 && i <= 16384) || i >= 3145728)
-			mapInfo = 0xFC;	//Memory Holes
-		else if (i >= 1024 && i < 2048)
-			mapInfo = 0x1;	//KERNEL (1MB LIMIT)
-		else if (i >= 2048 && i < mapLoc )
-			mapInfo = 0x2;	//Memory Map
-		else
-			mapInfo = 0x0;*/
-void initPHYSMEM()
-{
-	*RAM = 0x0;
-	TotalRAM = probeRAM();
-	if (TotalRAM < 0x1000) {	//4MB ([4KB]KB)
-		puts("NOT ENOUGH RAM!\tSYSTEM HALTED");
-		__asm__ __volatile__ ("cli");
-		__asm__ __volatile__ ("hlt");
-		for(;;);
-	}
-	_mmngr_memory_size	=	TotalRAM;
-	_mmngr_memory_map	=	(uint32_t*) MMAP_LOCATION;
-	_mmngr_max_blocks	=	(TotalRAM*1024) / PMMNGR_BLOCK_SIZE;
-	_mmngr_used_blocks	=	_mmngr_max_blocks;
-	_mmngr_free_blocks	=	0;
-	memset (_mmngr_memory_map, 0xf, pmmngr_get_block_count() / PMMNGR_BLOCKS_PER_BYTE );
-	initMMAP();
-}
+	int frame = mmap_first_free_s (pages);
 
-void	pmmngr_init (size_t memSize, physical_addr bitmap) {
+	if (frame == -1) {
+		return 0; }	//not enough space
 
-	_mmngr_memory_size	=	memSize;
-	_mmngr_memory_map	=	(uint32_t*) bitmap;
-	_mmngr_max_blocks	=	(pmmngr_get_memory_size()*1024) / PMMNGR_BLOCK_SIZE;
-	_mmngr_used_blocks	=	pmmngr_get_block_count();
+	for (uint32_t i=0; i<pages; i++)
+		set_used (frame+i);
 
-	//! By default, all of memory is in use
-	memset (_mmngr_memory_map, 0xf, pmmngr_get_block_count() / PMMNGR_BLOCKS_PER_BYTE );
-
-}
-
-void	pmmngr_init_region (physical_addr base, size_t size) {
-
-	int align = base / PMMNGR_BLOCK_SIZE;
-	int blocks = size / PMMNGR_BLOCK_SIZE;
-
-	for (; blocks>0; blocks--) {
-		mmap_unset (align++);
-		_mmngr_used_blocks--;
-	}
-
-	mmap_set (0);	//first block is always set. This insures allocs cant be 0
-}
-
-void	pmmngr_deinit_region (physical_addr base, size_t size) {
-
-	int align = base / PMMNGR_BLOCK_SIZE;
-	int blocks = size / PMMNGR_BLOCK_SIZE;
-
-	for (; blocks>0; blocks--) {
-		mmap_set (align++);
-		_mmngr_used_blocks++;
-	}
-
-	mmap_set (0);	//first block is always set. This insures allocs cant be 0
-}
-
-void*	pmmngr_alloc_block () {
-
-	if (pmmngr_get_free_block_count() <= 0)
-		return 0;	//out of memory
-
-	int frame = mmap_first_free ();
-
-	if (frame == -1)
-		return 0;	//out of memory
-
-	mmap_set (frame);
-
-	physical_addr addr = frame * PMMNGR_BLOCK_SIZE;
-	_mmngr_used_blocks++;
+	uint32_t addr = frame * PMMNGR_BLOCK_SIZE;
 
 	return (void*)addr;
 }
 
-void	pmmngr_free_block (void* p) {
+void *calloc(uint32_t pages)	// Clear and Allocate
+{
+	uint32_t* location = (uint32_t*) malloc(pages);
+	memset (location, 0, (pages * 0x1000));
+	return (void *) location;
+}
 
-	physical_addr addr = (physical_addr)p;
-	int frame = addr / PMMNGR_BLOCK_SIZE;
-
-	mmap_unset (frame);
-
+void free(uint32_t page)		// Deallocate Page
+{
+	Mem_Map[page / 32] &= ~ (1 << (page % 32));
+	_mmngr_free_blocks++;
 	_mmngr_used_blocks--;
 }
 
-void*	pmmngr_alloc_blocks (size_t size) {
-
-	if (pmmngr_get_free_block_count() <= size)
-		return 0;	//not enough space
-
-	int frame = mmap_first_free_s (size);
-
-	if (frame == -1)
-		return 0;	//not enough space
-
-	for (uint32_t i=0; i<size; i++)
-		mmap_set (frame+i);
-
-	physical_addr addr = frame * PMMNGR_BLOCK_SIZE;
-	_mmngr_used_blocks+=size;
-
-	return (void*)addr;
-}
-
-void	pmmngr_free_blocks (void* p, size_t size) {
-
-	physical_addr addr = (physical_addr)p;
-	int frame = addr / PMMNGR_BLOCK_SIZE;
-
-	for (uint32_t i=0; i<size; i++)
-		mmap_unset (frame+i);
-
-	_mmngr_used_blocks-=size;
-}
-
-size_t	pmmngr_get_memory_size () {
-
-	return _mmngr_memory_size;
-}
-
-uint32_t pmmngr_get_block_count () {
-
-	return _mmngr_max_blocks;
-}
-
-uint32_t pmmngr_get_use_block_count () {
-
-	return _mmngr_used_blocks;
-}
-
-uint32_t pmmngr_get_free_block_count () {
-
-	return _mmngr_max_blocks - _mmngr_used_blocks;
-}
-
-uint32_t pmmngr_get_block_size () {
-
-	return PMMNGR_BLOCK_SIZE;
-}
-
-void	pmmngr_paging_enable (bool b)
+void _PMem_init()
 {
-	if(b)
-		enable_paging();
-	else
-		disable_paging();
+	RAM = 0;
+	Mem_Map = (uint32_t *)MMAP_LOCATION;
+	memset(&Mem_Map[0], 0xFF, MMAP_SIZE);	// Allocate all RAM as Used
+	Total_Ram = probeRAM();
+	memset(&Mem_Map[0x20], 0, (Total_Ram - 0x1000));  // Free available RAM after 4MB..?
+	_mmngr_memory_size	=	Total_Ram;
+	_mmngr_memory_map	=	(uint32_t*) MMAP_LOCATION;
+	_mmngr_max_blocks	=	(Total_Ram*0x400) / PMMNGR_BLOCK_SIZE;
+	_mmngr_used_blocks	=	0x400;
+	_mmngr_free_blocks	=	(Total_Ram / 4);
 }
-
-bool pmmngr_is_paging ()
-{
-	uint32_t cr0 = pmmngr_get_CR0();
-	cr0 |= 0x80000000;	
-	return (cr0 & 0x80000000) ? false : true;
-}
-
-void pmmngr_load_PDBR (physical_addr addr)		//I have NO CLUE if this will work...
-{
-	/*#ifdef _MSC_VER
-	_asm {
-		mov	eax, [addr]
-		mov	cr3, eax		// PDBR is cr3 register in i86
-	}
-	#endif*/
-	__asm__ __volatile__ ("mov %0, %%eax":: "g" (addr): "memory");
-	__asm__ __volatile__ ("mov %%eax, %%cr3"::: "memory");
-}
-
