@@ -46,6 +46,8 @@ void _API_INT_31(regs *r)
 		scroll_disable++;
 	if (command & 0x10)
 		puts(StringTemp);
+	if (command & 0x20)
+		putch((char) r->esi);
 	// if we need a clean-up...
 	if (command & 0x02)
 		movcur_disable--;

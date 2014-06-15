@@ -27,5 +27,8 @@
 	int stringf(char *str, const char *format, ...);
 	void itoa(unsigned i,unsigned base,char* buf);
 	void itoa_s(unsigned i,unsigned base,char* buf);
+	void *memcpy(void *dest, const void *src, size_t count);
+	void *memset(void *dest, char val, size_t count);
+	unsigned short *memsetw(unsigned short *dest, unsigned short val, size_t count);
 	
 #endif

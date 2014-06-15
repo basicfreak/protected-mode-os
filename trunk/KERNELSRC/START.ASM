@@ -93,14 +93,6 @@ ret
 ;
 ;	Landing point of kernel sub jump
 ;
-[global __FPU_init]
-__FPU_init:
-MOV EDX, CR0                            ; Start probe, get CR0
-OR EDX, 0xb       ; clear TS and EM to force fpu access
-MOV CR0, EDX                            ; store control word
-FNINIT
-ret
-
 startsub:									; Sub function from start
 	call	_main							; Call main() from C code
 

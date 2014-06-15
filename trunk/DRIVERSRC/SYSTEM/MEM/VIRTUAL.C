@@ -6,6 +6,11 @@
 #include "PAGEFAULT.H"
 #include "../../HARDWARE/RS232.H"
 #include <STDIO.H>
+
+
+#define DEBUG
+
+
 //IN START.ASM:
 extern void enable_paging(void);
 extern void disable_paging(void);
@@ -14,6 +19,9 @@ pdir_p KERNEL_PAGE_DIR;
 
 Page_Entry Create_Page(paddr physical, bool user, bool write)
 {
+/*#ifdef DEBUG
+	txf(1, "\n\r(VIRTUAL.C:Line 23) Create_Page(0x%x, 0x%x, 0x%x)\n\r", physical, user, write);
+#endif*/
 	Page_Entry e = I86_PTE_PRESENT;
 	if (user)
 		e |= I86_PTE_USER;
@@ -25,6 +33,9 @@ Page_Entry Create_Page(paddr physical, bool user, bool write)
 
 void Add_Table_To_Dir(uint32_t index, ptbl_p table, pdir_p dir, bool user, bool write)
 {
+#ifdef DEBUG
+	txf(1, "\n\r(VIRTUAL.C:Line 37) Add_Table_To_Dir(0x%x, 0x%x, 0x%x, 0x%x, 0x%x)\n\r", index, (uint32_t) table, (uint32_t) dir, user, write);
+#endif
 	uint32_t *entry = (uint32_t*) &dir->table [index];
 	*entry = I86_PDE_PRESENT;
 	if (user)
@@ -36,6 +47,9 @@ void Add_Table_To_Dir(uint32_t index, ptbl_p table, pdir_p dir, bool user, bool 
 
 void setPaging(bool enable)
 {
+#ifdef DEBUG
+	txf(1, "\n\r(VIRTUAL.C:Line 51) setPaging(0x%x)\n\r", enable);
+#endif
 	if (enable)
 		enable_paging();
 	else
@@ -44,16 +58,25 @@ void setPaging(bool enable)
 
 void setPageDirectroy(pdir_p dir)
 {
+#ifdef DEBUG
+	txf(1, "\n\r(VIRTUAL.C:Line 59) setPageDirectroy(0x%x)\n\r", (uint32_t) dir);
+#endif
 	__asm__ __volatile__ ("mov %0, %%cr3":: "b"(dir));
 }
 
 pdir_t *Kernel_Page_Dir_Address()
 {
+#ifdef DEBUG
+	txf(1, "\n\r(VIRTUAL.C:Line 67) Kernel_Page_Dir_Address() = 0x%x\n\r", (uint32_t) ((pdir_t *) KERNEL_PAGE_DIR));
+#endif
 	return (pdir_t *) KERNEL_PAGE_DIR;
 }
 
 void _VMem_init()
 {
+#ifdef DEBUG
+	txf(1, "\n\r(VIRTUAL.C:Line 75) _VMem_init()\n\r");
+#endif
 	// Allocate Kernel page directory
 	KERNEL_PAGE_DIR = (pdir_p) calloc(3);
 	if (!KERNEL_PAGE_DIR)
@@ -94,11 +117,21 @@ void _VMem_init()
 	} p_ret;*/
 pdir_p Create_Process_Directory(uint32_t process_size_bytes, uint32_t *physical_location)
 {
+#ifdef DEBUG
+	txf(1, "\n\r(VIRTUAL.C:Line 118) Create_Process_Directory(0x%x. 0x%x)\n\r", process_size_bytes, (uint32_t) *physical_location);
+#endif
+	
 	pdir_p ret = (pdir_p) calloc(3);
 	*physical_location = (uint32_t) calloc(process_size_bytes / PAGE_SIZE);
+#ifdef DEBUG
+	txf(1, "\t(VIRTUAL.C:Line 125) Physical Location Of Thread = 0x%x\n\r", (uint32_t) *physical_location);
+#endif
 	// Setup directory...
 	// Stack
 	paddr *stack = calloc(2);		//8KB stack for process ends at 0xC0000000 Virtual
+#ifdef DEBUG
+	txf(1, "\t(VIRTUAL.C:Line 131) Physical Location Of Stack = 0x%x\n\r", (uint32_t) (paddr) *stack);
+#endif
 	ptbl_p tablestack = (ptbl_p) calloc(1);								//C0000000
 	Page_Entry stackpage0 = Create_Page((uint32_t)stack, true, true);	//BFFFE000
 	Page_Entry stackpage1 = Create_Page(((uint32_t)stack)+0x1000, true, true);

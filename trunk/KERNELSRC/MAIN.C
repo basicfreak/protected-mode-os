@@ -46,8 +46,6 @@ puts("Done.\nInstalling TSS...");
 	uint32_t EsP = 0;
 	__asm__ __volatile__ ("mov %%esp, %0":"=g"(EsP));
 	tss_set_stack(0x10, EsP);
-	extern void _FPU_init(void);
-	_FPU_init();
 puts("Done.\nInstalling API...");
 	_API_init();
 puts("Done.\nGetting BIOS Data...");

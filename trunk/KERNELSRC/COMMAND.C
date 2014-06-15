@@ -14,9 +14,7 @@
 #include "../DRIVERSRC/HARDWARE/PCI.H"
 #include "../DRIVERSRC/SYSTEM/CPU/INT.H"
 
-extern void _GDT_debug(void);
-extern void _TSS_debug(void);
-extern void INT(uint8_t num, uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx, uint32_t esi, uint32_t edi);
+#define DEBUG
 
 void cmd_read (int sec, int num);
 void cat(char* path);
@@ -29,6 +27,9 @@ char explode_cmd[50][100];
 
 void help()
 {
+#ifdef DEBUG
+	txf(1, "(COMMAND.C:Line 28) help()\n\r");
+#endif
 	puts ("MyDOS v. 0.1\n");
 	puts ("-------------------------------------\n");
 	puts ("cat [PATH]      Reads File off disk\n");
@@ -39,7 +40,6 @@ void help()
 	puts ("ram             Outputs RAM info\n");
 	puts ("exit            Exits CLI\n");
 	puts ("------------DEBUG LIST---------------\n");
-	puts ("div0            Divide by 0\n");
 	puts ("inb [PORT]      Byte input PORT (HEX)\n");
 	puts ("outb [PORT] [=] Byte output PORT = (HEX)\n");
 	puts ("read # #        Read Floppy Sector #-#\n");
@@ -49,13 +49,14 @@ void help()
 
 void do_CMD(int args)
 {
+#ifdef DEBUG
+	txf(1, "(COMMAND.C:Line 50) do_CMD(0x%x)\n\r", args);
+#endif
 	int i = 0;
 	if (streql(explode_cmd[0], "initfat"))
 		fsysFatInitialize ();
 	else if (streql(explode_cmd[0], "cls"))
 		cls();
-	else if (streql(explode_cmd[0], "pci"))
-		_PCI_init();
 	else if (streql(explode_cmd[0], "cat"))
 		cat(explode_cmd[1]);
 	else if (streql(explode_cmd[0], "exit"))
@@ -67,8 +68,6 @@ void do_CMD(int args)
 		printf("Free RAM:     %iKB\n", _mmngr_memory_size-(_mmngr_used_blocks*4));
 		printf("Used RAM:     %iKB\n", _mmngr_used_blocks*4);
 	}
-	else if (streql(explode_cmd[0], "div0"))
-		{ int divz = 1/0; }
 	else if (streql(explode_cmd[0], "echo")) {
 		for (i = 1; i <= args; i++)
 			printf ("%s ", explode_cmd[i]);
@@ -100,36 +99,6 @@ void do_CMD(int args)
 		enter_usermode();
 		puts("Welcome to User Land!\n");
 	}
-	else if (streql(explode_cmd[0], "int30"))
-		INT(0x30, 0, 0, 0, 0, (uint32_t) &explode_cmd[1], 0);
-	else if (streql(explode_cmd[0], "int31")) {
-		char* StringMe = "Test String INT 31\n";
-		uint8_t color = 0x2F;
-		uint8_t command = 0x14;  // Move Cursor - Puts String
-		uint8_t X = 2;
-		uint8_t Y = 10;
-		/*// al = Command
-	// ah = Color
-	// esi = char* pointer
-	// bl = X
-	// bh = Y
-	uint8_t command = (r->eax & 0xFF);
-	uint8_t color = (r->eax >> 8) & 0xFF;
-	char* StringTemp = (char*) r->esi;
-	uint8_t backupColor = getColor();
-	int X = (r->ebx & 0xFF);
-	int Y = (r->ebx >> 8) & 0xFF;*/
-		//INT(uint8_t num, uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx, uint32_t esi, uint32_t edi)
-		INT(0x31, (uint32_t) (((color << 8) &0xFF00) | command), (uint32_t) ((Y << 8) | X), 0, 0, (uint32_t) StringMe, 0);
-	}
-	else if (streql(explode_cmd[0], "gdt"))
-		_GDT_debug();
-	else if (streql(explode_cmd[0], "tss"))
-		_TSS_debug();
-	else if (streql(explode_cmd[0], "test")) {
-		fsysFatInitialize ();
-		load("test.bin");
-	}
 	else if (streql(explode_cmd[0], "load")) {
 		load(explode_cmd[1]);
 	}
@@ -141,6 +110,9 @@ void do_CMD(int args)
 
 void cmd_handler()
 {
+#ifdef DEBUG
+	txf(1, "(COMMAND.C:Line 111) cmd_handler()\n\r");
+#endif
 	memset(cmd_command, 0, sizeof cmd_command);
 	printf("%s",CurrentPath);
 	gets(cmd_command, ">");
@@ -151,6 +123,9 @@ void cmd_handler()
 
 void init_cmd()
 {
+#ifdef DEBUG
+	txf(1, "(COMMAND.C:Line 124) init_cmd()\n\r");
+#endif
 	cmd_command[0] = '\0';
 	CurrentPath = "A:\\";
 	setColor (0x07);
@@ -160,6 +135,9 @@ void init_cmd()
 
 void cmd_read (int sec, int num)
 {
+#ifdef DEBUG
+	txf(1, "(COMMAND.C:Line 136) cmd_read(0x%x, 0x%x)\n\r", sec, num);
+#endif
 	uint32_t sectornum = sec;
 	uint8_t* sector = 0;
 	printf ("\n\rSector %i contents:\n\n\r", sectornum);
@@ -186,16 +164,19 @@ void cmd_read (int sec, int num)
 
 void cat(char* path)
 {
+#ifdef DEBUG
+	txf(1, "(COMMAND.C:Line 165) cat(%s)\n\r", path);
+#endif
 	//! open file
 	FILE file = VFS_OpenFile (path);
-	//! test for invalid file
-	if (file.flags == FS_INVALID) {
-		printf ("\n\rUnable to open file\n");
+	//! cant display directories
+	if (( file.flags & FS_DIRECTORY )){// == FS_DIRECTORY) {
+		printf ("\n\rUnable to display contents of directory.\n");
 		return;
 	}
-	//! cant display directories
-	if (( file.flags & FS_DIRECTORY ) == FS_DIRECTORY) {
-		printf ("\n\rUnable to display contents of directory.\n");
+	//! test for invalid file
+	if (file.flags & FS_INVALID) {
+		printf ("\n\rUnable to open file\n");
 		return;
 	}
 	//! top line
@@ -221,6 +202,9 @@ void cat(char* path)
 
 void load(char* path)
 {
+#ifdef DEBUG
+	txf(1, "(COMMAND.C:Line 203) load(%s)\n\r", path);
+#endif
 	//! open file
 	FILE file = VFS_OpenFile (path);
 	//! test for invalid file
@@ -233,9 +217,8 @@ void load(char* path)
 		printf ("\n\rUnable to display contents of directory.\n");
 		return;
 	}
-	_THREADMAN_ACTIVE_ = false;
+	_THREAD_MAN_disable();
 	uint16_t task = AddThread(0x800000, 0xFF, true);
-	printf("location = 0x%x\n", THREAD[task].physaddr);
 	uint8_t *location = (uint8_t*) THREAD[task].physaddr;
 	//! top line
 	//! display file contents
@@ -250,8 +233,7 @@ void load(char* path)
 		x++;
 		//! wait for input to continue if not EOF
 	}
-	printf("location = 0x%x\n", &location[0]);
 	THREAD[task].flags = 0x01;
-	_THREADMAN_ACTIVE_ = true;
+	_THREAD_MAN_enable();
 	//! done :)
 }

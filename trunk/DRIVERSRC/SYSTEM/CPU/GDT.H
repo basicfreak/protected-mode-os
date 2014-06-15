@@ -6,7 +6,6 @@
 	#define				GDT_H_INCLUDED
 	
 	#include <FORMATTING.H>
-	#define DEBUG
 	
 	enum I86_GDT_DESC {
 		_ACCESS=0x01,			//00000001
@@ -48,8 +47,5 @@
 	
 	void install_ring(uint8_t num, uint32_t base, uint32_t limit, uint8_t access, uint8_t gran);
 	void _GDT_init(void);
-	#ifdef DEBUG
-		void _GDT_debug(void);
-	#endif
 	
 #endif

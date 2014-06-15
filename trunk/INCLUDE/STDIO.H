@@ -33,6 +33,7 @@
 	void				cls();
 	void				setColor(int cSet);
 	int					getColor(void);
+	extern void 		txf(uint8_t COM, char *message, ...);
 	
 	
 	uint8_t 			inb (uint16_t _port);

@@ -3,6 +3,7 @@
 */
 
 #include "RS232.H"
+#include "8042/KEYBOARD.H"
 #include "BIOS.H"
 #include <STDIO.H>
 #include <STRING.H>
@@ -145,14 +146,27 @@ void IER_handle(uint16_t COM, bool RX, bool TX, bool LS, bool MS)
 	write(COM, IER, temp);
 }
 
-int8_t INT_ID(uint16_t COM)
+bool INT_ID(uint16_t COM)
 {
-	int8_t ret = -(10);
+/*enum IIR_BREAKDOWN {
+	IIR_Pending = 1,
+	IIR_ModemStatus = 0,
+	IIR_TXEmpty = 2,
+	IIR_RXData = 4,
+	IIR_LineStatus = 6,
+	IIR_TimeOut = 0xC,
+	IIR_64BitFIFO = 0x20,
+	IIR_NoFIFO = 0,
+	IIR_NoFIFOFunctional = 0x80,
+	IIR_FIFO = 0xC0
+};*/
+
+	// I only care about RX info
 	uint8_t temp = read(COM, IIR);
-	if ((temp & 1)) {
-		ret = (int8_t) temp;
-	}
-	return ret;
+	printf("RS232 IRQ - INT ID = 0x%x\n", temp);
+	if (temp & (IIR_RXData) && !temp & (IIR_Pending))
+		return true;
+	return false;
 }
 
 uint8_t COM_ID(uint16_t COM)
@@ -192,8 +206,18 @@ void setBaudRate(uint16_t COM, uint32_t RATE)
 	write(COM, DLL, LO_RATE);												//Data Rate Low
 	write(COM, DLH, HI_RATE);												//Data Rate High
 	write(COM, LCR, LCR_8Bits);												//Line Control
-	write(COM, FCR, (FCR_Enable | FCR_ClearRX | FCR_ClearTX | FCR_16_14));	//Enable FIFO
-	IER_handle(COM, true, true, true, true);								//Enable IRQ
+	write(COM, FCR,(FCR_Enable | FCR_ClearRX | FCR_ClearTX | FCR_16_1));	//Enable FIFO - 1 BIT BUFFER NOTIFY
+	write(COM, MCR, (MCR_DataTermRdy | MCR_RequestSend | MCR_AuxOut2));
+	IER_handle(COM, true, true, true, true);								/*Enable IRQ for RX only
+	write(COM, 1, 0);
+	write(COM, 2, 6);
+	write(COM, 3, 0x80);
+	write(COM, DLL, LO_RATE);												//Data Rate Low
+	write(COM, DLH, HI_RATE);												//Data Rate High
+	write(COM, 3, 3);
+	write(COM, 2, 7);
+	write(COM, 3, 0xB);
+	write(COM, 1, 0xC);*/
 }
 
 void tx(uint16_t COM, uint8_t DATA)
@@ -210,8 +234,14 @@ uint8_t rx(uint16_t COM)
 
 void _RS232_handler(regs *r)
 {
-	puts("RS232 IRQ:\n");
-	
+	if(INT_ID(COM1)) {
+		uint8_t data = rx(COM1);				//Get Char
+		if(data) {								//If Valid Data
+			putch(data);						//Print Char
+			keyboard_buffer = (char) data;		//Keyboard data.
+			tx(COM1, data);						//Echo Char
+		}
+	}
 }
 
 void _RS232_init()
@@ -223,25 +253,23 @@ void _RS232_init()
 	//Set Data Rates
 	if(COM1) {
 		COM1_ID = COM_ID(COM1);
-		setBaudRate(COM1, 19200);
+		setBaudRate(COM1, 115200);
 	} else COM1_ID = _ERROR;
 	if(COM2) {
 		COM2_ID = COM_ID(COM2);
-		setBaudRate(COM2, 19200);
+		setBaudRate(COM2, 115200);
 	} else COM2_ID = _ERROR;
 	if(COM3) {
 		COM3_ID = COM_ID(COM3);
-		setBaudRate(COM3, 19200);
+		setBaudRate(COM3, 115200);
 	} else COM3_ID = _ERROR;
 	if(COM4) {
 		COM4_ID = COM_ID(COM4);
-		setBaudRate(COM4, 19200);
+		setBaudRate(COM4, 115200);
 	} else COM4_ID = _ERROR;
 	//Enable Interrupts
-	if(COM1 || COM3)
-		install_IR(4, _RS232_handler);
-	if(COM2 || COM4)
-		install_IR(3, _RS232_handler);
+	install_IR(4, _RS232_handler);
+	install_IR(3, _RS232_handler);
 	COMS[1] = COM1;
 	COMS[2] = COM2;
 	COMS[3] = COM3;
@@ -252,6 +280,7 @@ void _RS232_init()
 	tx(COM1, 's');
 	tx(COM1, 't');
 	tx(COM1, '\n');
+	tx(COM1, '\r');
 }
 void txc(uint8_t COM, uint8_t data)
 {

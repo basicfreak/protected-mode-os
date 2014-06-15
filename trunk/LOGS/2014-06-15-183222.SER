@@ -1,11 +1,12 @@
+=~=~=~=~=~=~=~=~=~=~=~= PuTTY log 2014.06.15 18:32:22 =~=~=~=~=~=~=~=~=~=~=~=
 Test
 
 (PHYSICAL.C:Line 176) _PMem_init()
 
 (PHYSICAL.C:Line 13) probeRAM() = 0x4000
-	Total RAM:	16384KB
-	Free RAM:	12288KB
-	Used RAM:	4096KB
+Total RAM:16384KB
+Free RAM:12288KB
+Used RAM:4096KB
 
 (VIRTUAL.C:Line 75) _VMem_init()
 
@@ -87,5 +88,13 @@ Test
 
 (THREADMAN.C:Line 61) _THREAD_MAN_enable()
 (COMMAND.C:Line 124) init_cmd()
+(COMMAND.C:Line 111) cmd_handler()
+(COMMAND.C:Line 50) do_CMD(0x0)
+(COMMAND.C:Line 111) cmd_handler()
+(COMMAND.C:Line 50) do_CMD(0x1)
+(COMMAND.C:Line 111) cmd_handler()
+(COMMAND.C:Line 50) do_CMD(0x1)
+(COMMAND.C:Line 111) cmd_handler()
+(COMMAND.C:Line 50) do_CMD(0x0)
 (COMMAND.C:Line 111) cmd_handler()
 

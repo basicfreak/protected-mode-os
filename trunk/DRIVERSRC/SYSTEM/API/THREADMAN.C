@@ -6,6 +6,12 @@
 #include <STDIO.H>
 #include "../CPU/IRQ.H"
 
+#define DEBUG
+
+#ifdef DEBUG
+	#include "../../HARDWARE/RS232.H"
+#endif
+
 uint16_t Current_Thread = 1; // 0 always refers to idle thread - 1 will be kernel all info will be saved on first task switch (hopefully...)
 
 extern void _SYSTEM_IDLE_THREAD(void); // thread 0
@@ -29,8 +35,10 @@ void _THREAD_MAN_PIT_ENTRY(tregs *r)
 		if (Next_Thread >= MAX_THREADS)
 			Next_Thread = 0;
 	if (Next_Thread == Current_Thread)
-		Next_Thread = 0;
-		
+		Next_Thread = 0;/*
+#ifdef DEBUG
+	txf(1, "\n\r(THREADMAN.C:Line 43) Switching from Thread 0x%x to 0x%x\n\r", Current_Thread, Next_Thread);
+#endif*/
 	// Load next Thread
 	Current_Thread = Next_Thread;
 	__asm__ __volatile__ ("mov %0, %%cr3":: "b"(THREAD[Current_Thread].cr3));
@@ -39,7 +47,9 @@ void _THREAD_MAN_PIT_ENTRY(tregs *r)
 
 void _THREAD_MAN_init()
 {
-	//printf("\n\tsizeof(tregs) * MAX_THREADS = 0x%x\n", sizeof(tregs) * MAX_THREADS);
+#ifdef DEBUG
+	txf(1, "\n\r(THREADMAN.C:Line 48) _THREAD_MAN_init()\n\r");
+#endif
 	memset (&THREAD, 0, sizeof(tregs) * MAX_THREADS); // Clear Thread Table
 	puts("Done.\n\t\tADDING IDLE THREAD... #");
 	AddThread((uint32_t) &_SYSTEM_IDLE_THREAD, 0xFF, 0);
@@ -50,11 +60,17 @@ void _THREAD_MAN_init()
 }
 void _THREAD_MAN_enable()
 {
+#ifdef DEBUG
+	txf(1, "\n\r(THREADMAN.C:Line 61) _THREAD_MAN_enable()\n\r");
+#endif
 	_THREADMAN_ACTIVE_ = true;
 }
 
 void _THREAD_MAN_disable()
 {
+#ifdef DEBUG
+	txf(1, "\n\r(THREADMAN.C:Line 69) _THREAD_MAN_disable()\n\r");
+#endif
 	_THREADMAN_ACTIVE_ = false;
 }
 
@@ -62,6 +78,10 @@ extern uint32_t Kernel_Stack(void);
 
 void KillCurrentThreadISRs(regs *r)
 {
+#ifdef DEBUG
+	txf(1, "\n\r(THREADMAN.C:Line 79) KillCurrentThreadISRs(0x%x)\n\r", (uint32_t) r);
+	txf(1, "\tKilling Thread 0x%x\n\r", Current_Thread);
+#endif
 	THREAD[Current_Thread].flags = 0;
 	THREAD[Current_Thread].cr3 = 0;
 	Current_Thread = 0;
@@ -89,12 +109,19 @@ void KillCurrentThreadISRs(regs *r)
 
 void KillThread(uint16_t Thread)
 {
+#ifdef DEBUG
+	txf(1, "\n\r(THREADMAN.C:Line 110) KillThread(0x%x)\n\r", Thread);
+	txf(1, "\tKilling Thread 0x%x\n\r", Thread);
+#endif
 	THREAD[Thread].flags = 0;
 	THREAD[Thread].cr3 = 0;
 }
+
 uint16_t AddThread(uint32_t location, uint8_t flags, bool user)
 {
-	printf("\n\tAddThread(0x%x, 0x%x, 0x%x) = ", location, flags, user);
+#ifdef DEBUG
+	txf(1, "\n\r(THREADMAN.C:Line 119) AddThread(0x%x, 0x%x, 0x%x) = ", location, flags, user);
+#endif
 	bool found = false;
 	int task = 0;
 	for (int i = 0; i < MAX_THREADS ; i++)
@@ -102,7 +129,9 @@ uint16_t AddThread(uint32_t location, uint8_t flags, bool user)
 			found = true;
 			task = i;
 		}
-printf ("%i ", task);
+#ifdef DEBUG
+	txf(1, "%i ", task);
+#endif
 	tregs tempreg;
 	memset(&tempreg, 0, sizeof(tregs));
 	if (!user) {		// Kernel Thread
@@ -131,6 +160,8 @@ printf ("%i ", task);
 	tempreg.eflags = 0x0202;
 	memcpy(&THREAD[task].registers, &tempreg, sizeof(tregs));
 	THREAD[task].flags = flags;
-	printf("& EIP = 0x%x\n", THREAD[task].registers.eip);
+#ifdef DEBUG
+	txf(1, "& EIP = 0x%x\n\r", THREAD[task].registers.eip);
+#endif
 	return task;
 }

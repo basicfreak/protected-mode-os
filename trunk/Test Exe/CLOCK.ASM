@@ -1,14 +1,12 @@
 [bits 32]
-;[org 0x800000]
+[org 0x800000]
 
 [global entry]
 [extern _main]
 
 entry:
-	mov	esp, 0xBFFFFFFF
-a:
 	call _main
-	jmp a
+	jmp entry
 	
 [global _GetTime]
 	
