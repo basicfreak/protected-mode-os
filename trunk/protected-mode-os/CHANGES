@@ -1,0 +1,19 @@
+2014-06-27:
+	Moved to a cross compiler (gcc)
+	Created Make File
+	Removed over a thousand warning DJGPP was not reporting
+	Changed to ELF32-i386 executable format
+	Fixed i8042
+	Fixed UART (COMS now act as Keyboard Buffer)
+	Switched to Grub 0.92 (temporary)
+	Added a whole bunch of debug info
+	Broke FDC Driver
+		Thus forcing removal of FAT12 Driver
+			Thus we cannot load user land binarys
+
+Next Update:
+	Fix FDC
+	Change code to load user land ELF32-i386 instead of binary
+
+Previous Updates:
+	I was using DJGPP and lets just keep the previous updates in the dark ;)
