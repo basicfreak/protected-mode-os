@@ -1,91 +1,0 @@
-Test
-
-(PHYSICAL.C:Line 176) _PMem_init()
-
-(PHYSICAL.C:Line 13) probeRAM() = 0x4000
-	Total RAM:	16384KB
-	Free RAM:	12288KB
-	Used RAM:	4096KB
-
-(VIRTUAL.C:Line 75) _VMem_init()
-
-(PHYSICAL.C:Line 156) calloc(0x3)
-
-(PHYSICAL.C:Line 125) malloc(0x3) = 
-(PHYSICAL.C:Line 86) mmap_first_free_s (0x3) = 
-(PHYSICAL.C:Line 46) mmap_test(0x401) = 0x0
-
-(PHYSICAL.C:Line 46) mmap_test(0x402) = 0x0
-
-(PHYSICAL.C:Line 46) mmap_test(0x403) = 0x0
-0x400
-
-(PHYSICAL.C:Line 54) set_used(0x400)
-
-(PHYSICAL.C:Line 54) set_used(0x401)
-
-(PHYSICAL.C:Line 54) set_used(0x402)
-0x400000
-
-(PHYSICAL.C:Line 156) calloc(0x1)
-
-(PHYSICAL.C:Line 125) malloc(0x1) = 
-(PHYSICAL.C:Line 86) mmap_first_free_s (0x1) = 
-(PHYSICAL.C:Line 64) mmap_first_free () = 0x403
-
-(PHYSICAL.C:Line 54) set_used(0x403)
-0x403000
-
-(VIRTUAL.C:Line 37) Add_Table_To_Dir(0x0, 0x403000, 0x400000, 0x1, 0x1)
-
-(PHYSICAL.C:Line 156) calloc(0x1)
-
-(PHYSICAL.C:Line 125) malloc(0x1) = 
-(PHYSICAL.C:Line 86) mmap_first_free_s (0x1) = 
-(PHYSICAL.C:Line 64) mmap_first_free () = 0x404
-
-(PHYSICAL.C:Line 54) set_used(0x404)
-0x404000
-
-(VIRTUAL.C:Line 37) Add_Table_To_Dir(0x1, 0x404000, 0x400000, 0x1, 0x1)
-
-(PHYSICAL.C:Line 156) calloc(0x1)
-
-(PHYSICAL.C:Line 125) malloc(0x1) = 
-(PHYSICAL.C:Line 86) mmap_first_free_s (0x1) = 
-(PHYSICAL.C:Line 64) mmap_first_free () = 0x405
-
-(PHYSICAL.C:Line 54) set_used(0x405)
-0x405000
-
-(VIRTUAL.C:Line 37) Add_Table_To_Dir(0x2, 0x405000, 0x400000, 0x1, 0x1)
-
-(PHYSICAL.C:Line 156) calloc(0x1)
-
-(PHYSICAL.C:Line 125) malloc(0x1) = 
-(PHYSICAL.C:Line 86) mmap_first_free_s (0x1) = 
-(PHYSICAL.C:Line 64) mmap_first_free () = 0x406
-
-(PHYSICAL.C:Line 54) set_used(0x406)
-0x406000
-
-(VIRTUAL.C:Line 37) Add_Table_To_Dir(0x3, 0x406000, 0x400000, 0x1, 0x1)
-
-(VIRTUAL.C:Line 59) setPageDirectroy(0x400000)
-
-(VIRTUAL.C:Line 51) setPaging(0x1)
-
-(THREADMAN.C:Line 48) _THREAD_MAN_init()
-
-(THREADMAN.C:Line 119) AddThread(0x10020C, 0xFF, 0x0) = 0 
-(VIRTUAL.C:Line 67) Kernel_Page_Dir_Address() = 0x400000
-& EIP = 0x10020C
-
-(THREADMAN.C:Line 119) AddThread(0x0, 0x1, 0x0) = 1 
-(VIRTUAL.C:Line 67) Kernel_Page_Dir_Address() = 0x400000
-& EIP = 0x0
-
-(THREADMAN.C:Line 61) _THREAD_MAN_enable()
-(COMMAND.C:Line 124) init_cmd()
-(COMMAND.C:Line 111) cmd_handler()
-
