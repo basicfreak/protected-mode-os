@@ -28,7 +28,7 @@ void _THREAD_MAN_PIT_ENTRY(tregs *r)
 		if (Current_Thread == 0) Next_Thread = 1;
 		else if (Current_Thread == 1) Next_Thread = 2;
 		else Next_Thread = 0;
-	}*/
+	}/*/
 	for (Next_Thread = (uint16_t) (Current_Thread + 1); THREAD[Next_Thread].flags != 0x01; Next_Thread++)
 		if (Next_Thread >= MAX_THREADS)
 			Next_Thread = 0;

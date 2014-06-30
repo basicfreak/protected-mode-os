@@ -1,6 +1,6 @@
-/*
-./LIBSRC/FDC.C
-*/
+/* * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *					HARDWARE/FDC.C					 *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "FDC.H"
 #include <STDIO.H>
@@ -9,566 +9,461 @@
 #include "../SYSTEM/CPU/IRQ.H"
 #include "TIMER.H"
 
-#define DEBUG
 
-int tries;
-uint16_t _currentCylinder;
+///#define DEBUG
 
-void floppy_dma_read (void);
-void floppy_dma_write (void);
-uint8_t FIFO_read(void);
-bool FIFO_write(uint8_t cmd);
-void DOR_write(uint8_t cmd);
-bool floppy_waitIRQ(void);		
-bool FIFO_ready(void);
-void floppy_handler(regs *r);
-void floppy_IRQ_handle(uint32_t* st0, uint32_t* cyl);
-bool floppy_changed(void);
-void floppy_speed(uint8_t speed); //0=500KB\s 1=300KB\s 2=250KB\s 3=1MB\s
-void floppy_current(uint8_t driveNum);
-void floppy_setVars(int i);
-void floppy_mechanical_info (uint8_t stepr, uint8_t loadt, uint8_t unloadt, bool dma );
-void floppy_readSector_imp (uint8_t head, uint8_t track, uint8_t sector, uint8_t secotrs);
-bool floppy_seek ( uint8_t cyl, uint8_t head );
-volatile bool _FloppyDiskIRQ;
-int floppy_calibrate(void);
-void fdc_quickReset(void);
-void fdc_enable(void);
-void fdc_disable(void);
-uint8_t floppy_status(void);
+/* * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *			   Declare Local Functions				 *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-uint8_t *DMA_BUFFER = (uint8_t *) 0x1000;
-uint8_t DMA_CHANNEL = 2;
+error _FDC_SENSEINT(uint8_t *st0, uint8_t *cyl);
+void _FDC_IR(regs *r);
+error _FDC_WAIT_IR(void);
+error _FDC_Write(uint16_t FDC, uint8_t OFF, uint8_t DATA);
+error_data_u8_t _FDC_Read(uint16_t FDC, uint8_t OFF);
+error DOR_Handler(uint8_t drive, bool motor, bool reset);
+uint8_t MSR_Handler(void);
+bool FDC_Ready(void);
+error FDC_Specify(uint8_t drive, bool dma, uint8_t steprate, uint8_t loadtime, uint8_t unloadtime);
+error FDC_Configure(uint8_t drive, bool impSeek, bool fifo, bool polling, uint8_t threshold);
+error FDC_Calibrate(uint8_t drive);
+error FDC_Speed(uint8_t drive, uint8_t speed);
+error FDC_Reset(uint8_t drive);
+error FDC_Seek(uint8_t drive, uint8_t head, uint8_t cylinder);
+error FDC_SectorIO(uint8_t drive, bool write, uint8_t head, uint8_t track, uint8_t cylinder, uint8_t count);
+void lbaCHS (int sector,int *head,int *track,int *cylinder);
 
-int FLOPPY_MOTOR_LIST[4] = {16, 32, 64, 128};
+/* * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *			   	   Local Variables					 *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-void floppy_set_dma (uint8_t *addr)
-{
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 45) floppy_set_dma(0x%x)\n\r", addr);
-#endif
-	DMA_BUFFER = addr;
-}
+bool _FDC_IRQ;
+bool _FDC_RESET_REQUIRED;
 
-//initialize DMA to use phys addr 1k-64k
-bool floppy_init_dma(uint8_t* buffer, unsigned length)
-{
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 53) floppy_init_dma(%x, %x)\n\r", buffer, length);
-#endif
-	union {
-      uint8_t byte[4];//Lo[0], Mid[1], Hi[2]
-      unsigned long l;
-	}a, c;
-   a.l=(unsigned)buffer;
-   c.l=(unsigned)length-1;
-   //Check for buffer issues
-   if ((a.l >> 24) || (c.l >> 16) || (((a.l & 0xffff)+c.l) >> 16)) {
-#ifdef DEBUG
-	txf(1, "\t(FDC.C:Line 66) BUFFER ERROR\n\r");
-#endif
-		return false;
-   }
-   dma_reset ();
-   dma_mask_channel( DMA_CHANNEL );//Mask channel 2
-   dma_reset_flipflop ( 1 );//Flipflop reset on DMA 1
-   dma_set_address( DMA_CHANNEL, a.byte[0],a.byte[1]);//Buffer address
-   dma_reset_flipflop( 1 );//Flipflop reset on DMA 1
-   dma_set_count( DMA_CHANNEL, c.byte[0],c.byte[1]);//Set count
-   dma_set_read ( DMA_CHANNEL );
-   dma_unmask_all();//Unmask channel 2
-   return true;
-}
+uint16_t timeout = 0xA0; // Timeouts This is times ~10mS (A0 = ~1.6S)
+
+#define DMA_CHANNEL 2
+#define IRQ_NUMBER 6
+
+static uint16_t _FDC_BASE[4] = { 0x3F0, 0x3F0, 0x370, 0x370 };
+
+enum _FDC_PORT_BASES {
+	_FDC_PRIMARY = 0x3f0,
+	_FDC_SECONDARY = 0x370
+};
+
+enum _FDC_PORT_OFFSETS {
+	STRA = 0,
+	STRB = 1,
+	DOR = 2,
+	MSR = 4,
+	DSR = 4,
+	FIFO = 5,
+	DATA = 5,
+	DIR = 7,
+	CCR = 7
+};
+
+enum _FDC_COMMANDS {
+	_FDC_READTRACK = 0x2,
+	_FDC_WRITESECTOR = 0x5,
+	_FDC_READSECTOR = 0x6,
+	_FDC_WRITEDELSECTOR = 0x9,
+	_FDC_READDELSECTOR = 0xC,
+	_FDC_FORMATTRACK = 0xD,
+
+	_FDC_SPECIFY = 0x3,
+	_FDC_DRIVESTAT = 0x4,
+	_FDC_CALIBRATE = 0x7,
+	_FDC_GETINT = 0x8,
+	_FDC_READSECTORID = 0xA,
+	_FDC_SEEK = 0xF,
+
+	_FDC_VERSION = 0x10,
+
+	_FDC_EXT_SKIP = 0x20,
+	_FDC_EXT_DDENSITY = 0x40,
+	_FDC_EXT_MULTITRACK = 0x80
+};
+
+enum _FDC_DTL {
  
-//prepare the DMA for read transfer
-void floppy_dma_read ()
+	_DTL_128 = 0,
+	_DTL_256 = 1,
+	_DTL_512 = 2,
+	_DTL_1024 = 4
+};
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *			   	   Local Functions					 *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+error _FDC_SENSEINT(uint8_t *st0, uint8_t *cyl)
 {
 #ifdef DEBUG
-	txf(1, "(FDC.C:Line 84) floppy_dma_read()\n\r");
+	txf(1, "_FDC_SENSEINT(*st0, *cyl)\n\r");
 #endif
-	dma_set_read ( DMA_CHANNEL );
-}
- 
-//prepare the DMA for write transfer
-void floppy_dma_write ()
-{
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 93) floppy_dma_write()\n\r");
-#endif
-	dma_set_write ( DMA_CHANNEL );
+	error errorcode = ERROR_NONE;
+	error_data_u8_t errordata = 0;
+	if((errorcode = _FDC_Write(_FDC_BASE[0], DATA, _FDC_GETINT)))
+		return errorcode;
+	if(((errordata = _FDC_Read(_FDC_BASE[0], DATA)) >> 8))
+		return (error) (errordata >> 8);
+	*st0 = (uint8_t) (errordata & 0xFF);
+	if(((errordata = _FDC_Read(_FDC_BASE[0], DATA)) >> 8))
+		return (error) (errordata >> 8);
+	*cyl = (uint8_t) (errordata & 0xFF);
+	return ERROR_NONE;
 }
 
-uint8_t FIFO_read()
+error _FDC_WAIT_IR()
 {
 #ifdef DEBUG
-	txf(1, "(FDC.C:Line 101) FIFO_read()\n\r");
+	txf(1, "_FDC_WAIT_IR()\n\r");
 #endif
-	for (int i = 0; i < 750; i++ ) {
-		if ( FIFO_ready () ) {
-///			if (debug) puts("FIFO Read\n");
-			return inb (FIFO);
-		}// else timer_wait(1);
+	uint16_t i = timeout;
+	while(!_FDC_IRQ && i--)
+		timer_wait(1); //~10mS
+	if(!i)
+		return ERROR_TIMEOUT;
+	_FDC_IRQ = false;
+	return ERROR_NONE;
+}
+
+void _FDC_IR(regs *r)
+{
+#ifdef DEBUG
+	txf(1, "\n\r\t\t\tFDC IRQ RECIVED\n\r");
+#endif
+	if(r->eax) {}
+	_FDC_IRQ = true;
+}
+
+error _FDC_Write(uint16_t FDC, uint8_t OFF, uint8_t Data)
+{
+	if((FDC != 0x370 && FDC != 0x3F0) || OFF>CCR)
+		return ERROR_INPUT;
+	if(OFF != DATA)
+		outb((uint16_t)(FDC+(uint16_t)OFF), Data);
+	else {
+		uint16_t i = timeout;
+		while(!FDC_Ready() && i--)
+			__asm__ __volatile__ ("nop");
+		if(!i)
+			return ERROR_TIMEOUT;
+		outb((uint16_t)(FDC+(uint16_t)OFF), Data);
 	}
 #ifdef DEBUG
-	txf(1, "\t(FDC.C:Line 107) FIFO FAILED TO READ Continue...\n\r");
+	txf(1, "_FDC_Write(0x%x, 0x%x, 0x%x)\n\r", FDC, OFF, Data);
 #endif
-	return 0;
+	return ERROR_NONE;
 }
 
-bool FIFO_write(uint8_t cmd)
+error_data_u8_t _FDC_Read(uint16_t FDC, uint8_t OFF)
 {
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 118) FIFO_write(0x%x)\n\r", cmd);
-#endif
-	for (int i = 0; i < 750; i++ ) {
-		if ( FIFO_ready () ) {
-///			if (debug) puts("FIFO Wrote\n");
-			outb (FIFO, cmd);
-			return 1;
-		}// else timer_wait(1);
+	uint8_t mydata;
+	if((FDC != 0x370 && FDC != 0x3F0) || OFF>CCR)
+		return (error_data_u8_t) (ERROR_INPUT << 8);
+	if(OFF != DATA)
+		mydata = inb((uint16_t)(FDC+(uint16_t)OFF));
+	else {
+		uint16_t i = timeout;
+		while(!FDC_Ready() && i--)
+			__asm__ __volatile__ ("nop");
+		if(i)
+			mydata = inb((uint16_t)(FDC+(uint16_t)OFF));
+		else
+			return (error_data_u8_t) (ERROR_TIMEOUT << 8);
 	}
 #ifdef DEBUG
-	txf(1, "\t(FDC.C:Line 124) FIFO FAILED TO WRITE Contine...\n\r");
+	txf(1, "_FDC_READ(0x%x, 0x%x) = 0x%x\n\r", FDC, OFF, mydata);
 #endif
-	return 0;
+	return (error_data_u8_t) ((ERROR_NONE << 8) | mydata);
 }
 
-void DOR_write(uint8_t cmd)
+error DOR_Handler(uint8_t drive, bool motor, bool reset)
 {
 #ifdef DEBUG
-	txf(1, "(FDC.C:Line 136) DOR_write(0x%x)\n\r", cmd);
+	txf(1, "DOR_Handler(0x%x, %s, %s)\n\r", drive, ((motor) ? "TRUE" : "FALSE"), ((reset) ? "TRUE" : "FALSE"));
 #endif
-	outb(DOR, cmd);
-}
-
-bool floppy_waitIRQ()
-{
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 144) floppy_waitIRQ()\n\r");
-#endif
-	//while (!_FloppyDiskIRQ);
-	int timeout = 10;
-	while ( !_FloppyDiskIRQ && timeout) {
-		timer_wait(6);
-		timeout--;
+	if(drive>3)
+		return ERROR_INPUT;
+	uint8_t Data = 0;
+	if(!reset) {
+		Data = 0xC;
+		if(motor)
+			Data |= (uint8_t) (1 << (4 + drive));
 	}
-	_FloppyDiskIRQ = FALSE;
-	if (!timeout) {
-#ifdef DEBUG
-	txf(1, "\t(FDC.C:Line 156) NO IRQ\n\r");
-#endif
-		return FALSE;
-	}
-	else return TRUE;
+	(void) _FDC_Write(_FDC_BASE[drive], DOR, Data); // I already handled the error check for DOR
+	if (motor) timer_wait(15); // about 150 ms
+	return ERROR_NONE;
 }
 
-void floppy_reset()		
+uint8_t MSR_Handler()
 {
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 165) floppy_reset()\n\r");
-#endif
-	uint32_t st0, cyl;
-	//reset the controller
-	fdc_disable ();
-	fdc_enable ();
-	
-	if(floppy_waitIRQ ()) {
-	// send CHECK_INT/SENSE INTERRUPT command to all drives
-		for (int i=0; i<4; i++) {
-			floppy_IRQ_handle (&st0,&cyl);
-		}
-	}
-	else
-	{
-		floppy_reset();
-	}
-///	if (debug) puts("fdc send CONFIGURE to FIFO\n");
-	FIFO_write (CONFIGURE);
-	//outb (FIFO, CONFIGURE);
-	// transfer speed 500kb/s
-///	if (debug) puts("floppy_speed()\n");
-	floppy_speed (curFloppy_speed);
-	// pass mechanical drive info. steprate=3ms, unload time=240ms, load time=16ms
-///	if (debug) puts("fdc send Mechanical info\n");
-	floppy_mechanical_info (3,16,240,true);
-	// calibrate the disk
-///	if (debug) puts("waitIRQ\n");
-	
-///	if (debug) puts("calibrate:");
-	floppy_calibrate ();
-	FIFO_write (LOCK);
-	return;
+	return (uint8_t) (_FDC_Read(_FDC_BASE[0], MSR) & 0xFF); // If there are errors here we are SOL anyways
 }
 
-bool FIFO_ready()
+bool FDC_Ready()
 {
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 203) FIFO_ready()\n\r");
-#endif
-	bool ret = FALSE;
-	//int temp = floppy_status();
-	//if ( (temp & 0xc0) == 0x80 || (temp & 0xc0) == 0x81) ret = TRUE;
-	if (floppy_status() & 0x80) ret = TRUE;
-///	if (debug && ret) puts("FIFO Ready\n");
-	//if (debug && !ret) puts("FIFO NOT Ready\n");
-#ifdef DEBUG
-	if(!ret)
-		txf(1, "(FDC.C:Line 211) Not Ready\n\r");
-	else
-		txf(1, "(FDC.C:Line 211) Ready\n\r");
-#endif
-	return ret;
-}
-
-uint8_t floppy_status()
-{
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 223) floppy_status()\n\r");
-#endif
-	return inb(MSR);
-}
-
-void floppy_handler(regs *r)
-{
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 231) floppy_handler(0x%x)\n\r\tFDC IRQ RECIVED\n\r", r);
-#endif
-	if(r->eax){}
-	//! irq fired
-	_FloppyDiskIRQ = TRUE;
-}
-
-void floppy_IRQ_handle(uint32_t* st0, uint32_t* cyl)
-{
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 241) floppy_IRQ_handle(0x%x, 0x%x)\n\r", st0, cyl);
-#endif
-	for (int i = 0; i < 75; i++) {
-		if (FIFO_ready()) {
-			FIFO_write(SENSE_INTERRUPT);
-			//outb(FIFO, SENSE_INTERRUPT);
-			timer_wait(6);
-			*st0 = FIFO_read();
-			//*st0 = inb (FIFO);
-			timer_wait(6);
-			*cyl = FIFO_read();
-			//*cyl = inb (FIFO);
-			//while (!FIFO_ready()) FIFO_read();
-#ifdef DEBUG
-	txf(1, "\t(FDC.C:Line 260) IRQ HANDLED\n\r");
-#endif
-			return;
-		} else timer_wait(6);
-	}
-}
-
-bool floppy_changed()
-{
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 265) floppy_changed()\n\r");
-#endif
-	bool ret = FALSE;
-	if (inb(DIR) >= 0x80) ret = TRUE;
-	return ret;
-}
-
-void floppy_motor(bool on)
-{
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 275) floppy_motor(%s)\n\r", ((on) ? "TRUE" : "FALSE"));
-#endif
-	if(on)
-		DOR_write ((uint8_t) (0x0C | floppy_drive_number  | FLOPPY_MOTOR_LIST[floppy_drive_number]));
-	else
-		DOR_write ((uint8_t) (0x0C | floppy_drive_number));
-	timer_wait(20);
-}
-
-void floppy_speed(uint8_t speed) //0=500KB\s 1=300KB\s 2=250KB\s 3=1MB\s
-{
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 287) floppy_speed(0x%x)\n\r", speed);
-#endif
-	if ( speed > 3)
-		return;
-	outb(CCR, speed);
-	//outb(DSR, speed);
-}
-
-void floppy_current(uint8_t driveNum)
-{
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 298) floppy_current(0x%x)\n\r", driveNum);
-#endif
-	int temp = 0;
-	if ( driveNum > 1 )
-		return;
-	floppy_drive_number = driveNum;
-	if(driveNum == 0) temp = CMOS_Floppy_Master;
-	else temp = CMOS_Floppy_Slave;
-	floppy_setVars(temp);
-	
-}
-
-void fdc_quickReset()
-{
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 313) fdc_quickReset()\n\r");
-#endif
-	uint32_t st0, cyl0;
-	fdc_disable();
-	fdc_enable();
-	if(floppy_waitIRQ ()) {
-		for (int i=0; i<4; i++)
-			floppy_IRQ_handle (&st0,&cyl0);
-	}
-	floppy_calibrate();
-}
-
-void fdc_enable()
-{
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 328) fdc_enable()\n\r");
-#endif
-	DOR_write (0x0C | floppy_drive_number);
-}
-
-void fdc_disable()
-{
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 336) fdc_disable()\n\r");
-#endif
-	DOR_write (0);
-}
-
-void floppy_setVars(int i)
-{
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 344) floppy_setVars(0x%x)\n\r", i);
-#endif
-	switch (i)
-	{
-		case	1:
-			curFloppy_sectors = Sectors_Floppy_360;
-			curFloppy_tracks = Heads_Floppy_360;
-			curFloppy_cylinders = Cylinders_Floppy_360;
-			curFloppy_speed = Datarate_Floppy_360;
-			curFloppy_type = 1;
-			break;
-		case	2:
-			curFloppy_sectors = Sectors_Floppy_12;
-			curFloppy_tracks = Heads_Floppy_12;
-			curFloppy_cylinders = Cylinders_Floppy_12;
-			curFloppy_speed = Datarate_Floppy_12;
-			curFloppy_type = 2;
-			break;
-		case	3:
-			curFloppy_sectors = Sectors_Floppy_720;
-			curFloppy_tracks = Heads_Floppy_720;
-			curFloppy_cylinders = Cylinders_Floppy_720;
-			curFloppy_speed = Datarate_Floppy_720;
-			curFloppy_type = 3;
-			break;
-		case	4:
-			curFloppy_sectors = Sectors_Floppy_144;
-			curFloppy_tracks = Heads_Floppy_144;
-			curFloppy_cylinders = Cylinders_Floppy_144;
-			curFloppy_speed = Datarate_Floppy_144;
-			curFloppy_type = 4;
-			break;
-		case	5:
-			curFloppy_sectors = Sectors_Floppy_288;
-			curFloppy_tracks = Heads_Floppy_288;
-			curFloppy_cylinders = Cylinders_Floppy_288;
-			curFloppy_speed = Datarate_Floppy_288;
-			curFloppy_type = 5;
-			break;
-		default:
-			curFloppy_sectors = 0;
-			curFloppy_tracks = 0;
-			curFloppy_cylinders = 0;
-			curFloppy_speed = 0;
-			curFloppy_type = 0;
-			break;
-	}
-}
-
-//pass mechanical drive info. step rate=3ms, unload time=240ms, load time=16ms
-void floppy_mechanical_info (uint8_t stepr, uint8_t loadt, uint8_t unloadt, bool dma ) //(3,16,240,true)
-{
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 397) floppy_mechanical_info(0x%x, 0x%x, 0x%x, %s)\n\r", stepr, loadt, unloadt, ((dma) ? "TRUE" : "FALSE"));
-#endif
-	uint8_t data = 0;
-	FIFO_write (SPECIFY);
-	data = (uint8_t) (( (stepr & 0xf) << 4) | (unloadt & 0xf)); //110000 | 0000 = 110000 = 30
-	FIFO_write (data);
-	data = (uint8_t) (( loadt << 1 ) | ( (dma) ? 0 : 1 ) ); //100000 | 0 = 20
-	FIFO_write (data);
-}
-
-int floppy_calibrate()
-{
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 410) floppy_calibrate()\n\r");
-#endif
-	uint32_t st0, cyl;
-	// turn on the motor
-	floppy_motor (true);
-	for (int i = 0; i < 4; i++)
-	{
-		// send command
-		FIFO_write ( RECALIBRATE );
-		FIFO_write ( floppy_drive_number );
-		if (floppy_waitIRQ ()) {
-			floppy_IRQ_handle ( &st0, &cyl);
-		// did we fine cylinder 0? if so, we are done
-			if (!cyl) {
-				_currentCylinder = (uint16_t) cyl;
-#ifdef DEBUG
-	txf(1, "\t(FDC.C:Line 426) CALIBRATED!\n\r");
-#endif
-				floppy_motor (false);
-				return 0;
-			}  
-#ifdef DEBUG
-	txf(1, "\t(FDC.C:Line 426) NOT CALIBRATED()\n\r");
-#endif
-		} else {
-			fdc_quickReset();
-		}
-	}
-	floppy_motor (false);
-	return -1;
-}
-
-
-void floppy_readSector_imp (uint8_t head, uint8_t track, uint8_t sector, uint8_t sectors)
-{
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 446) floppy_readSector_imp(0x%x, 0x%x, 0x%x, 0x%x)\n\r", head, track, sector, sectors);
-#endif
-	uint32_t st0, cyl;
-	// set the DMA for read transfer
-	floppy_init_dma( (uint8_t*) DMA_BUFFER, (unsigned int) (512*sectors) );
-	floppy_dma_read (); //  turned out to be in above function.
-	// read in a sector
-	FIFO_write ( (uint8_t) (READ_DATA | MULTI_TRACK | SKIP_MODE | MAGNETIC_ENCODING) );
-//	FIFO_write ( READ_DATA );
-	FIFO_write ( (uint8_t) (head << 2 | floppy_drive_number) );
-	FIFO_write ( (uint8_t) track);
-	FIFO_write ( (uint8_t) head);
-	FIFO_write ( (uint8_t) sector);
-	FIFO_write ( (uint8_t) 2 );	// ALWAYS 2 (512 bytes per sector)
-	FIFO_write ( (uint8_t) (( ( sector + sectors ) >= curFloppy_sectors ) ? curFloppy_sectors : sector + sectors) );
-//	FIFO_write ( ( ( sector + 1 ) >= curFloppy_sectors ) ? curFloppy_sectors : sector + 1 );
-//	FIFO_write ( sectors );	//	REPLACED ABOVE WITH THIS TESTING MULTI SECTOR READ
-	FIFO_write ( (uint8_t) 0x1B );	// GAP1
-	FIFO_write ( (uint8_t) 0xff );	// ALWAYS FF (512 bytes per sector)
-	// wait for irq
-	if (floppy_waitIRQ()) {
-		// read status info
-		for (int j=0; j<7; j++)
-			FIFO_read ();
-		// let FDC know we handled interrupt
-		floppy_IRQ_handle (&st0,&cyl);
-	} else {
-		fdc_quickReset();
-		tries--;
-		floppy_motor(1);
-		if(tries) floppy_readSector_imp (head, track, sector, sectors);
-	}
-}
-
-bool floppy_seek ( uint8_t cyl, uint8_t head )
-{
-#ifdef DEBUG
-	txf(1, "(FDC.C:Line 483) floppy_seek(0x%x, 0x%x)\n\r", cyl, head);
-#endif
-	tries = 4;
-	if (cyl < (uint8_t) curFloppy_cylinders) {
-		uint32_t st0, cyl0;
-		if (floppy_drive_number >= 2)
-			return 0;
-		for (int i = 0; i < 10; i++ ) {
-			// send the command
-			FIFO_write (SEEK);
-			FIFO_write ( (uint8_t) ((head) << 2 | floppy_drive_number));
-			FIFO_write (cyl);
-			// wait for the results phase IRQ
-			if (floppy_waitIRQ()) {
-				floppy_IRQ_handle (&st0,&cyl0);
-				// found the cylinder?
-				if ( cyl0 == cyl)
-					_currentCylinder = (uint16_t) cyl0;
-					return true;
-			} else {
-				fdc_quickReset();
-				tries--;
-				floppy_motor(1);
-				if(!tries) return false;
-			}
-		}
-	}
-	else
-		getch("floppy_seek(): Invalid Cylinder\n");
+	if(MSR_Handler() & 0x80)
+		return true;
+	timer_wait(1); //~10mS
 	return false;
 }
 
-uint8_t* floppy_readSector (int sectorLBA, uint8_t sectors)
+error FDC_Specify(uint8_t drive, bool dma, uint8_t steprate, uint8_t loadtime, uint8_t unloadtime)
 {
 #ifdef DEBUG
-	txf(1, "(FDC.C:Line 518) floppy_readSector(%x, %x)\n\r", sectorLBA, sectors);
+	txf(1, "FDC_Specify(0x%x, %s, 0x%x, 0x%x, 0x%x)\n\r", drive, ((dma) ? "TRUE" : "FALSE"), steprate, loadtime, unloadtime);
 #endif
-	floppy_set_dma((uint8_t *) 0x3500);
-//	floppy_reset();
-	floppy_motor (true);
-	if (floppy_drive_number >= 2)
-		return 0;
-	// convert LBA sector to CHS
-	int head=0, track=0, sector=1;
-	lbaCHS (sectorLBA, &head, &track, &sector);
-	// turn motor on and seek to track
-	if (_currentCylinder != (uint16_t) track)
-		if(!floppy_seek ((uint8_t)track, (uint8_t)head)) {
+	if(drive>3)
+		return ERROR_INPUT;
+	error errorcode = ERROR_NONE;
+	if((errorcode = _FDC_Write(_FDC_BASE[drive], DATA, _FDC_SPECIFY)))
+		return errorcode;
+	if((errorcode = _FDC_Write(_FDC_BASE[drive], DATA, (uint8_t) (((steprate & 0xf) << 4) | (unloadtime & 0xf)))))
+		return errorcode;
+	if((errorcode = _FDC_Write(_FDC_BASE[drive], DATA, (uint8_t) ((loadtime << 1) | ((dma) ? 0 : 1)))))
+		return errorcode;
+	return ERROR_NONE;
+}
+
+error FDC_Configure(uint8_t drive, bool impSeek, bool fifo, bool polling, uint8_t threshold)
+{
 #ifdef DEBUG
-	txf(1, "\t(FDC.C:Line 533) Did not seek properly!\n\r");
+	txf(1, "FDC_Configure(0x%x, %s, %s, %s, 0x%s)\n\r", drive, ((impSeek) ? "TRUE" : "FALSE"), ((fifo) ? "TRUE" : "FALSE"), ((polling) ? "TRUE" : "FALSE"), threshold );
 #endif
-			puts("Did not seek properly!\n");
-			return 0;
+	if(drive>3 || threshold>15)
+		return ERROR_INPUT;
+	uint8_t databyte = (uint8_t) (impSeek << 6) | threshold;
+	if(!fifo)
+		databyte |= (uint8_t) (1 << 5);
+	if(!polling)
+		databyte |= (uint8_t) (1 << 4);
+	error errorcode = ERROR_NONE;
+	if( (errorcode = _FDC_Write(_FDC_BASE[drive], DATA, 0x13)) )
+		return errorcode;
+	if( (errorcode = _FDC_Write(_FDC_BASE[drive], DATA, 0)) )
+		return errorcode;
+	if( (errorcode = _FDC_Write(_FDC_BASE[drive], DATA, databyte)) )
+		return errorcode;
+	if( (errorcode = _FDC_Write(_FDC_BASE[drive], DATA, 0)) )
+		return errorcode;
+	return ERROR_NONE;
+}
+
+error FDC_Calibrate(uint8_t drive)
+{
+#ifdef DEBUG
+	txf(1, "FDC_Calibrate(0x%x)\n\r", drive);
+#endif
+	if(drive>3)
+		return ERROR_INPUT;
+	error errorcode = ERROR_NONE;
+	if ( (errorcode = DOR_Handler(drive, true, false)) )
+		return errorcode;
+	uint8_t tries = 10;
+	while(tries) {
+		if((errorcode = _FDC_Write(_FDC_BASE[drive], DATA, _FDC_CALIBRATE)))
+			return errorcode;
+		if((errorcode = _FDC_Write(_FDC_BASE[drive], DATA, drive)))
+			return errorcode;
+		if((errorcode = _FDC_WAIT_IR()))
+			return errorcode;
+		uint8_t st0, cyl;
+		if((errorcode = _FDC_SENSEINT(&st0, &cyl)))
+			return errorcode;
+		if(!cyl) {
+			if ( (errorcode = DOR_Handler(drive, false, false)) )
+				return errorcode;
+			return ERROR_NONE;
 		}
-	// read sector and turn motor off
-	tries = 4;
-	floppy_readSector_imp ((uint8_t)head, (uint8_t)track, (uint8_t)sector, sectors);
-	floppy_motor (false);
-	// warning: this is a bit hackish
-	return (uint8_t*) DMA_BUFFER;
+		tries--;
+	}
+	return ERROR_HWFAILURE;
 }
 
-
-/* Sets up the Floppy Controller into IRQ6 */
-void floppy_install()
+error FDC_Speed(uint8_t drive, uint8_t speed)
 {
 #ifdef DEBUG
-	txf(1, "(FDC.C:Line 550) floppy_install()\n\r");
+	txf(1, "FDC_Speed(0x%x, 0x%x)\n\r", drive, speed);
 #endif
-	floppy_drive_number = 0;
-	floppy_setVars(CMOS_Floppy_Master);
-	install_IR(6, floppy_handler);
-	_FloppyDiskIRQ = FALSE;
-	fdc_disable();
-	floppy_reset();	
+	if(speed>3 || drive>3)
+		return ERROR_INPUT;
+	error errorcode;
+	if((errorcode = _FDC_Write(_FDC_BASE[drive], CCR, speed)))
+		return errorcode;
+	return ERROR_NONE;
 }
 
-void lbaCHS (int lba,int *head,int *track,int *sector)
+error FDC_Reset(uint8_t drive)
 {
 #ifdef DEBUG
-	txf(1, "(FDC.C:Line 563) lbaCHS(");
+	txf(1, "FDC_Reset(0x%x)\n\r", drive);
 #endif
-	*head = ( lba % ( curFloppy_sectors * 2 ) ) / ( curFloppy_sectors );
-	*track = lba / ( curFloppy_sectors * 2 );
-	*sector = lba % curFloppy_sectors + 1;
+	if(drive>3)
+		return ERROR_INPUT;
+	error errorcode = ERROR_NONE;
+	if ( (errorcode = DOR_Handler(drive, false, true)) )				// Disable Controller
+		return errorcode;
+	if ( (errorcode = DOR_Handler(drive, true, false)) )				// Enable Controller
+		return errorcode;
+	if( (errorcode = FDC_Speed(drive, 0)) )								// Set speed to 500kb/s
+		return errorcode;
+	if( (errorcode = _FDC_WAIT_IR()) )									// Wait for IRQ
+		return errorcode;
+	uint8_t st0, cyl;
+	for(int i=0; i<4; i++)
+		if( (errorcode = _FDC_SENSEINT(&st0, &cyl)))					// Acknolage IRQ x4
+			return errorcode;
+	if( (errorcode = FDC_Configure(drive, false, true, false, 1)) )			//Configure
+		return errorcode;
+	if( (errorcode = FDC_Specify(drive, true, 8, 5, 15)) )				// Specify
+		return errorcode;
+	if( (errorcode = FDC_Calibrate(0)) )								// Calibrate (and turn off motor)
+		return errorcode;
+	_FDC_RESET_REQUIRED = false;										// We just reset so it is not required ATM
+	return ERROR_NONE;
+}
+
+error FDC_Seek(uint8_t drive, uint8_t head, uint8_t cylinder)
+{
 #ifdef DEBUG
-   txf(1, "0x%x, 0x%x, 0x%x, 0x%x)\n\r", lba, *head, *track, *sector);
+	txf(1, "FDC_Reset(0x%x, 0x%x, 0x%x)\n\r", drive, head, cylinder);
 #endif
+	uint8_t st0, cyl;
+	error errorcode = ERROR_NONE;
+	for(int i = 0; i < 4; i ++) {
+		if((errorcode = _FDC_Write(_FDC_BASE[drive], DATA, _FDC_SEEK)))
+			return errorcode;
+		if((errorcode = _FDC_Write(_FDC_BASE[drive], DATA, (uint8_t) ((head << 2) | drive))))
+			return errorcode;
+		if((errorcode = _FDC_Write(_FDC_BASE[drive], DATA, cylinder)))
+			return errorcode;
+		if((errorcode = _FDC_WAIT_IR()))
+			return errorcode;
+		if((errorcode = _FDC_SENSEINT(&st0, &cyl)))
+			return errorcode;
+		if(cyl == cylinder)
+			return ERROR_NONE;
+	}
+	return ERROR_HWFAILURE;
+}
+
+error FDC_SectorIO(uint8_t drive, bool write, uint8_t head, uint8_t track, uint8_t sector, uint8_t count)
+{
+#ifdef DEBUG
+	txf(1, "FDC_SectorIO(0x%x, %s, 0x%x, 0x%x, 0x%x, 0x%x)\n\r", drive, ((write) ? "TRUE" : "FALSE"), head, track, sector, count);
+#endif
+	if(drive>3 || head>1 || track>79 || count>18)
+		return ERROR_INPUT;
+	uint8_t st0, cyl;
+	error errorcode = ERROR_NONE;
+	if((errorcode = _DMA_Setup(DMA_CHANNEL, write, 0x1000, (uint16_t)(count * 0x200))))
+		return errorcode;
+	if((errorcode = DOR_Handler(drive, true, false)))
+		return errorcode;
+	if((errorcode = FDC_Seek(drive, head, track)))
+		return errorcode;
+	if((errorcode = _FDC_Write(_FDC_BASE[drive], DATA, (_FDC_EXT_MULTITRACK | _FDC_EXT_DDENSITY | ((write) ? _FDC_WRITESECTOR : _FDC_READSECTOR) )    )))
+		return errorcode;
+	if((errorcode = _FDC_Write(_FDC_BASE[drive], DATA, (uint8_t) ((head << 2) | drive))))
+		return errorcode;
+	if((errorcode = _FDC_Write(_FDC_BASE[drive], DATA, track)))
+		return errorcode;
+	if((errorcode = _FDC_Write(_FDC_BASE[drive], DATA, head)))
+		return errorcode;
+	if((errorcode = _FDC_Write(_FDC_BASE[drive], DATA, sector)))
+		return errorcode;
+	if((errorcode = _FDC_Write(_FDC_BASE[drive], DATA, _DTL_512)))
+		return errorcode;
+	if((errorcode = _FDC_Write(_FDC_BASE[drive], DATA, count)))
+		return errorcode;
+	if((errorcode = _FDC_Write(_FDC_BASE[drive], DATA, 0x1B)))
+		return errorcode;
+	if((errorcode = _FDC_Write(_FDC_BASE[drive], DATA, 0xFF)))
+		return errorcode;
+	if((errorcode = _FDC_WAIT_IR()))
+		return errorcode;
+printf("FDC IO RESPONSE: ");
+	for(int i=0; i<7; i++)
+	{
+		error_data_u8_t errordata = _FDC_Read(_FDC_BASE[drive], DATA);
+		if(errordata >> 8)
+			return (error) (errordata >> 8);
+printf("0x%x ", errordata);
+		if(!i && (errordata & 0xF8))
+			_FDC_RESET_REQUIRED = true;
+		if((i==1 || i==2) && (errordata & 0xFF))
+			_FDC_RESET_REQUIRED = true;
+	}
+printf("\n");
+	if((errorcode = _FDC_SENSEINT(&st0, &cyl)))
+		return errorcode;
+	if((errorcode = DOR_Handler(drive, false, false)))
+		return errorcode;
+	return ERROR_NONE;
+}
+
+void lbaCHS (int sba,int *head,int *track,int *sector)
+{
+#ifdef DEBUG
+	txf(1, "lbaCHS(");
+#endif
+	*head = ( sba % ( 18 * 2 ) ) / ( 18 );
+	*track = sba / ( 18 * 2 );
+	*sector = sba % 18 + 1;
+#ifdef DEBUG
+   txf(1, "0x%x, 0x%x, 0x%x, 0x%x)\n\r", sba, *head, *track, *sector);
+#endif
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *			   	  Public Functions					 *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+void _FDC_init()
+{
+#ifdef DEBUG
+	txf(1, "_FDC_init()\n\r");
+#endif
+	_FDC_RESET_REQUIRED = true;
+	_FDC_IRQ = false;
+	install_IR(IRQ_NUMBER, _FDC_IR);
+}
+
+error _FDC_IO(bool write, int start, uint8_t count, void *buffer)
+{
+	uint8_t *MAINBUFFER = (uint8_t *) 0x1000;
+	uint8_t *BUFFER = (uint8_t *) buffer;
+	if (start >= 2880)
+		return ERROR_INPUT;
+	int tempstart = start;
+	int head, track, sector;
+	uint8_t tempcount = count;
+	error temp;
+	while( ((tempstart % 18) + tempcount) > 18 ) {
+		if (_FDC_RESET_REQUIRED)
+			FDC_Reset(0);
+		lbaCHS(tempstart, &head, &track, &sector);
+		if(write)		// Copy data into buffer
+			memcpy(MAINBUFFER, &BUFFER[((tempstart-start)*0x200)], ((18-(tempstart % 18)) * 0x200));
+		if((temp = FDC_SectorIO(0, write, (uint8_t) head, (uint8_t) track, (uint8_t) sector, (uint8_t)(18-(tempstart % 18)))))
+			return temp;
+		if(!write)		// Copy data out of buffer
+			memcpy(&BUFFER[((tempstart-start)*0x200)], MAINBUFFER, ((18-(tempstart % 18)) * 0x200));
+		tempcount = (uint8_t) (tempcount - (18-(tempstart%18)));
+		tempstart += (18-(tempstart % 18));
+	}
+	if (_FDC_RESET_REQUIRED)
+		FDC_Reset(0);
+	lbaCHS(tempstart, &head, &track, &sector);
+	if(write)
+		memcpy(MAINBUFFER, &BUFFER[((tempstart-start)*0x200)], ((tempcount) * 0x200));
+	if((temp = FDC_SectorIO(0, write, (uint8_t) head, (uint8_t) track, (uint8_t) sector, tempcount)))
+		return temp;
+	if(!write)
+		memcpy(&BUFFER[((tempstart-start)*0x200)], MAINBUFFER, ((tempcount) * 0x200));
+	return ERROR_NONE;
 }

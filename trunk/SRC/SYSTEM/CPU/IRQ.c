@@ -9,7 +9,7 @@
 
 void IRQ_HANDLER(regs *r);
 
-void *IRs[16] =
+void (*IRs[16])(regs *r) =
 {
     0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0

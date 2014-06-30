@@ -212,6 +212,7 @@ void _PMem_init()
 	_mmngr_max_blocks	=	(Total_Ram*0x400) / PMMNGR_BLOCK_SIZE;
 	_mmngr_used_blocks	=	0x400;
 	_mmngr_free_blocks	=	(Total_Ram / 4);
+	printf("\tTotal RAM:\t%iKB...", _mmngr_memory_size);
 #ifdef DEBUG
 	txf(1, "\tTotal RAM:\t%iKB\n\r", _mmngr_memory_size);
 	txf(1, "\tFree RAM:\t%iKB\n\r", _mmngr_memory_size-(_mmngr_used_blocks*4));

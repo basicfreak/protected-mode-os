@@ -24,12 +24,18 @@ char getch(const char *msg)
 
 void gets(char out[1024], const char *msg)
 {
+txf(1, "d");
 	keyboard_buffer = '\0';
+txf(1, "e");
 	puts(msg);
+txf(1, "f");
 	bool i = true;
+txf(1, "g");
 	while (i) {
+//txf(1, "h");
 		if (keyboard_buffer != '\0')
 		{
+txf(1, "i");
 			switch (keyboard_buffer)
 			{
 				case	'\n':
@@ -47,6 +53,7 @@ void gets(char out[1024], const char *msg)
 					}
 					break;
 			}
+txf(1, "j");
 			keyboard_buffer = '\0';
 		}
 	}

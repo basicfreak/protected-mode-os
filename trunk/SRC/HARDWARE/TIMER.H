@@ -21,5 +21,6 @@
 	void timer_wait(unsigned int ticks);
 	void sleep(unsigned int secs);
 	void _TIMER_init(void);
+	uint32_t GetTimerTicks(void);
 	
 #endif

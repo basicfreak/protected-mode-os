@@ -7,6 +7,11 @@
 #include <STDIO.H>
 #include "../SYSTEM/API/THREADMAN.H"
 
+uint32_t GetTimerTicks()
+{
+	return timer_ticks;
+}
+
 void PIT_TASK_IR(tregs *r);
 
 void PIT_TASK_IR(tregs *r)

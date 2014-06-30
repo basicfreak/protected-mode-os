@@ -1,19 +1,25 @@
-2014-06-27:
-	Moved to a cross compiler (gcc)
-	Created Make File
-	Removed over a thousand warning DJGPP was not reporting
-	Changed to ELF32-i386 executable format
-	Fixed i8042
-	Fixed UART (COMS now act as Keyboard Buffer)
-	Switched to Grub 0.92 (temporary)
-	Added a whole bunch of debug info
-	Broke FDC Driver
-		Thus forcing removal of FAT12 Driver
-			Thus we cannot load user land binarys
+2014-06-30:
+	Fixed FDC Driver, now it is stable and a decent speed 2.8KB/s on real H/W
+	FAT12 is back up
+	You can load a user land application (binary)
+		but it will crash the kernel if you do anything after loading
 
 Next Update:
-	Fix FDC
 	Change code to load user land ELF32-i386 instead of binary
+	Fix Task Switching and Locate any other bugs in the code...
+	ADD PCI-IDE support (along with FAT32 and Ext2)
 
 Previous Updates:
-	I was using DJGPP and lets just keep the previous updates in the dark ;)
+	2014-06-27:
+		(Repo Fix Sory Guys I had to Delete everything off the repo I messed up ;) RapidSVN is new to me)
+		Moved to a cross compiler (gcc)
+		Created Make File
+		Removed over a thousand warning DJGPP was not reporting
+		Changed to ELF32-i386 executable format
+		Fixed i8042
+		Fixed UART (COMS now act as Keyboard Buffer)
+		Switched to Grub 0.92 (temporary)
+		Added a whole bunch of debug info
+		Broke FDC Driver
+			Thus forcing removal of FAT12 Driver
+				Thus we cannot load user land binarys

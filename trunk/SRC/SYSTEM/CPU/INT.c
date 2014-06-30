@@ -8,7 +8,7 @@
 
 void INT_HANDLER(regs *r);
 
-void *INTs[32] =
+void (*INTs[32])(regs *r) =
 {
     0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,
