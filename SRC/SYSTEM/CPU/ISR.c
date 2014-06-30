@@ -10,7 +10,7 @@
 void ISR_HANDLER(regs *r);
 extern void KillCurrentThreadISRs(regs *r);
 
-void *ISRs[32] =
+void (*ISRs[32])(regs *r) =
 {
     0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0,

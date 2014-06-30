@@ -25,19 +25,21 @@
 #include "../SYSTEM/API/API.H"
 #include "../SYSTEM/API/THREADMAN.H"
 
+void load(const char* path);
+	extern void enter_usermode(void);
 extern void install_tss (uint8_t idx, uint32_t kernelSS, uint32_t kernelESP);
 extern void tss_set_stack (uint32_t kernelSS, uint32_t kernelESP);
 
 void _exit_(void);
 void _init(void);
-int main(void);
+int main(void);/*
 void fpu_load_control_word(const uint16_t control);
 
 void fpu_load_control_word(const uint16_t control)
 {
     asm volatile("fldcw %0;"::"m"(control)); 
 }
-
+*/
 void _init()
 {
 	initVideo ();
@@ -53,9 +55,6 @@ puts("Done.\nInstalling INT...");
 	_INT_init();
 puts("Done.\nInstalling TSS...");
 	install_tss(5,0x10,0);
-	uint32_t EsP = 0;
-	__asm__ __volatile__ ("mov %%esp, %0":"=g"(EsP));
-	tss_set_stack(0x10, EsP);
 puts("Done.\nInstalling API...");
 	_API_init();
 puts("Done.\nGetting BIOS Data...");
@@ -66,15 +65,13 @@ puts("Done.\nInitilizing PCI...");
 	_PCI_init();
 	__asm__ __volatile__ ("sti");						//DON'T FROGET TO RE-ENABLE INTS OR NOTHING WILL WORK RIGHT!!!!
 puts("Done.\nInitilizing RS232...");
-	_RS232_init();
+	_RS232_init();/*
 fpu_load_control_word(0x37F);
 fpu_load_control_word(0x37E);
-fpu_load_control_word(0x37A);
+fpu_load_control_word(0x37A);*/
 puts("Done.\nInstalling Physical Memory Manager...");
 	_PMem_init ();
 puts("Done.\nInstalling Virtual Memory Manager...");
-/*puts("FAIL!\nInitilizing ThreadMan...");
-puts("FAIL!\nInstalling Timer...");*/
 	_VMem_init();
 puts("Done.\nInitilizing ThreadMan...");
 	_THREAD_MAN_init();
@@ -95,16 +92,18 @@ puts("Done.\nInitilizing i8042...");
 				puts("ERROR!\n\tWARNING:\tFORCING KEYBOARD...");
 				_keyboard_init ();
 				puts("Done.\n\tWARNING:\tNO MOUSE\n");
-			}
-	
+			}	
 puts("Installing FDC...");
-	floppy_install ();/*
+	_FDC_init();
 puts("Done.\nInstalling FAT12...");
 	fsysFatInitialize ();
-puts("DONE.\nEntering User Land...");
-	extern void enter_usermode();
-	enter_usermode();*/
+
+puts("DONE.\nEnabling User Land...");
+	uint32_t EsP = 0;
+	__asm__ __volatile__ ("mov %%esp, %0":"=g"(EsP));
+	tss_set_stack(0x10, EsP);
 puts("Done.\n");
+//load("clock.exe");
 }
 
 void _exit_()

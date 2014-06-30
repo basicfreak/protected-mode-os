@@ -7,7 +7,7 @@
 #include <STRING.H>
 #include <STDIO.H>
 #include "../HARDWARE/FDC.H"
-#include "../SYSTEM/MEM/PHYSICAL.H"
+#include "../HARDWARE/TIMER.H"
 #include "../SYSTEM/API/THREADMAN.H"
 #include "../SYSTEM/FS/VFS.H"
 #include "../SYSTEM/FS/FAT12.H"
@@ -23,11 +23,13 @@ void cat(const char* path);
 void help(void);
 void do_CMD(unsigned int args);
 void load(const char* path);
+void CopyFloppyTest(void);
 
 char *CurrentPath;
 char cmd_command[1024];
 char explode_cmd[50][100];
-
+const char *DataToWrite = "             ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 1234567890                ";
+uint8_t *readbuffer;
 void help()
 {
 #ifdef DEBUG
@@ -56,14 +58,18 @@ void do_CMD(unsigned int args)
 	txf(1, "(COMMAND.C:Line 53) do_CMD(0x%x)\n\r", args);
 #endif
 	unsigned int i = 0;
-	if (streql(explode_cmd[0], "initfat"))
+	/*if (streql(explode_cmd[0], "initfat"))
 		fsysFatInitialize ();
 	if (streql(explode_cmd[0], "initfdc"))
-		floppy_install ();
-	else if (streql(explode_cmd[0], "cls"))
+		_FDC_init();*/
+	if (streql(explode_cmd[0], "cls"))
 		cls();
+	else if (streql(explode_cmd[0], "write"))
+		_FDC_IO(true, (int)textTOhex(explode_cmd[1]), 1, (uint8_t*) DataToWrite);
 	else if (streql(explode_cmd[0], "cat"))
 		cat(explode_cmd[1]);
+	else if (streql(explode_cmd[0], "clone"))
+		CopyFloppyTest();
 	else if (streql(explode_cmd[0], "exit"))
 		CMD_ACTIVE = FALSE;
 	else if (streql(explode_cmd[0], "help"))
@@ -72,10 +78,16 @@ void do_CMD(unsigned int args)
 		printf("Total RAM:    %iKB\n", _mmngr_memory_size);
 		printf("Free RAM:     %iKB\n", _mmngr_memory_size-(_mmngr_used_blocks*4));
 		printf("Used RAM:     %iKB\n", _mmngr_used_blocks*4);
+		txf(1, "Total RAM:    %iKB\n\r", _mmngr_memory_size);
+		txf(1, "Free RAM:     %iKB\n\r", _mmngr_memory_size-(_mmngr_used_blocks*4));
+		txf(1, "Used RAM:     %iKB\n\r", _mmngr_used_blocks*4);
 	}
 	else if (streql(explode_cmd[0], "echo")) {
-		for (i = 1; i <= args; i++)
+		for (i = 1; i <= args; i++) {
 			printf ("%s ", explode_cmd[i]);
+			txf(1, "%s ", explode_cmd[i]);
+		}
+		txf(1, "\n\r");
 		putch('\n');
 	}
 	else if (streql(explode_cmd[0], "color"))			{
@@ -84,15 +96,35 @@ void do_CMD(unsigned int args)
 	else if (streql(explode_cmd[0], "inb")) {
 		uint8_t in = inb((uint16_t) textTOhex(explode_cmd[1]));
 		printf("We recived %x = %i = %c\n", in, in, in);
+		txf(1, "We recived %x = %i = %c\n\r", in, in, in);
 	}
 	else if (streql(explode_cmd[0], "outb")) {
 		outb((uint16_t) textTOhex(explode_cmd[1]), (uint8_t) textTOhex(explode_cmd[2]));
 	}
+	else if (streql(explode_cmd[0], "inw")) {
+		uint16_t in = inw((uint16_t) textTOhex(explode_cmd[1]));
+		printf("We recived %x = %i = %c\n", in, in, in);
+		txf(1, "We recived %x = %i = %c\n\r", in, in, in);
+	}
+	else if (streql(explode_cmd[0], "outw")) {
+		outw((uint16_t) textTOhex(explode_cmd[1]), (uint16_t) textTOhex(explode_cmd[2]));
+	}
+	else if (streql(explode_cmd[0], "inl")) {
+		uint32_t in = inl((uint16_t) textTOhex(explode_cmd[1]));
+		printf("We recived %x = %i = %c\n", in, in, in);
+		txf(1, "We recived %x = %i = %c\n\r", in, in, in);
+	}
+	else if (streql(explode_cmd[0], "outl")) {
+		outl((uint16_t) textTOhex(explode_cmd[1]), (uint32_t) textTOhex(explode_cmd[2]));
+	}
 	else if (streql(explode_cmd[0], "ramx")) {
 		uint64_t start = textTOhex(explode_cmd[1]);
 		uint64_t end = textTOhex(explode_cmd[2]);
-		for (uint64_t t = start; t <= end; t++)
+		for (uint64_t t = start; t <= end; t++) {
 			printf("%x ", RAM[t]);
+			txf(1, "%x ", RAM[t]);
+		}
+		txf(1, "\n\r");
 		putch('\n');
 	}
 	else if (streql(explode_cmd[0], "read"))
@@ -117,11 +149,17 @@ void cmd_handler()
 #ifdef DEBUG
 	txf(1, "(COMMAND.C:Line 115) cmd_handler()\n\r");
 #endif
+txf(1, "a");
 	memset(cmd_command, 0, sizeof cmd_command);
+txf(1, "b");
 	printf("%s",CurrentPath);
+txf(1, "c");
 	gets(cmd_command, ">");
+txf(1, "k");
 	arrayAppend(cmd_command, ' ');
+txf(1, "l");
 	unsigned int args = (unsigned int) (explode (explode_cmd, cmd_command, ' ') - 1);
+txf(1, "m\n\r");
 	do_CMD(args);
 }
 
@@ -130,6 +168,7 @@ void init_cmd()
 #ifdef DEBUG
 	txf(1, "(COMMAND.C:Line 128) init_cmd()\n\r");
 #endif
+	readbuffer = calloc(4);
 	cmd_command[0] = '\0';
 	CurrentPath = (char *)"A:\\";
 	setColor (0x07);
@@ -142,22 +181,22 @@ void cmd_read (unsigned int sec, unsigned int num)
 #ifdef DEBUG
 	txf(1, "(COMMAND.C:Line 140) cmd_read(0x%x, 0x%x)\n\r", sec, num);
 #endif
-	uint32_t sectornum = sec;
-	uint8_t* sector = 0;
-	
-
+	int sectornum = (int) sec;
+	memset(readbuffer, 0, 0x4000);
 	//! read sector from disk
-	sector = floppy_readSector ( (int) sectornum, (uint8_t) num );
+	error errorcode;
+	if((errorcode = _FDC_IO(false, sectornum, (uint8_t) num, readbuffer)))
+		printf("ERROR CODE = 0x%x\n", errorcode);
 
 	//! display sector
-	if (sector!=0) {
+	if (readbuffer!=0) {
 
 		unsigned int i = 0;
 		for ( unsigned int c = 0; c < num; c++ ) {
-			printf ("\n\rSector %i contents:\n\r", (sectornum + (i/0x200)));
-			for (unsigned int j = 0; j < 512; j++)
-				printf ("%x ", sector[ i + j ]);
-			i += 512;
+			printf ("\n\rSector %i contents:\n\r", (sectornum + (int) (i/0x200)));
+			for (unsigned int j = 0; j < 0x200; j++)
+				printf ("%x ", readbuffer[ i + j ]);
+			i += 0x200;
 		}
 
 		printf ("\n\rDone.\n");
@@ -221,7 +260,7 @@ void load(const char* path)
 		printf ("\n\rUnable to display contents of directory.\n");
 		return;
 	}
-	_THREAD_MAN_disable();
+	//_THREAD_MAN_disable();
 	uint16_t task = AddThread(0x800000, 0xFF, true);
 	uint8_t *location = (uint8_t*) THREAD[task].physaddr;
 	//! top line
@@ -238,6 +277,40 @@ void load(const char* path)
 		//! wait for input to continue if not EOF
 	}
 	THREAD[task].flags = 0x01;
-	_THREAD_MAN_enable();
+	//_THREAD_MAN_enable();
 	//! done :)
+}
+
+void CopyFloppyTest()
+{
+	// I only want to test read / write seppeds so lets allocate memory now...
+	uint8_t *FloppyTestBuffer = calloc(360);		//1=4KB so... 360=1.44M Be the biggist alloc test yet ;)
+	uint32_t startTick, endTick;
+	error errorcode = ERROR_NONE;
+	//Sector By Sector Read
+	startTick = GetTimerTicks();
+	/*for(int i=0; i<80; i++)
+		if((errorcode=_FDC_IO(false, (i * 36), 36, &FloppyTestBuffer[i*0x4800])))
+			if((errorcode=_FDC_IO(false, (i * 36), 36, &FloppyTestBuffer[i*0x4800])))
+				printf("FDC IO TRACK: 0x%x\tError: 0x%x\n", i, errorcode);*/
+
+
+for(int i=0; i<12; i++)
+		if((errorcode=_FDC_IO(false, (i * 240), 240, &FloppyTestBuffer[i*0x1E000])))
+			if((errorcode=_FDC_IO(false, (i * 240), 240, &FloppyTestBuffer[i*0x1E000])))
+				printf("FDC IO TRACK: 0x%x\tError: 0x%x\n", i, errorcode);
+
+
+	endTick = GetTimerTicks();
+	printf("Floppy TRACK Read Time = %i mS\n", (10 * (endTick - startTick)));
+	(void) getch("Press Any Key To Write");
+	putch('\n');
+	//Sector By Sector Write
+	startTick = GetTimerTicks();
+	for(int i=0; i<80; i++)
+		if((errorcode=_FDC_IO(true, (i * 36), 36, &FloppyTestBuffer[i*0x4800])))
+			if((errorcode=_FDC_IO(true, (i * 36), 36, &FloppyTestBuffer[i*0x4800])))
+				printf("FDC IO TRACK: 0x%x\tError: 0x%x\n", i, errorcode);
+	endTick = GetTimerTicks();
+	printf("Floppy TRACK Write Time = %i mS\n", (10 * (endTick - startTick)));
 }

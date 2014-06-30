@@ -43,7 +43,7 @@ ENABLE		RESERVED	BUS NUMBER	DEVICE NUM	FUNCTION #	REGISTER #	00
 
 /**
 LOCAL FUNTIONS
-**/
+**/ 
 
 uint16_t _PCI_CONFIG_getWord(uint8_t bus, uint8_t slot, uint8_t function, uint8_t offset)
 {
@@ -71,76 +71,79 @@ uint16_t _PCI_getDeviceID(uint8_t bus, uint8_t slot)
 
 uint16_t _PCI_getCommand(uint8_t bus, uint8_t slot)
 {
-	return _PCI_CONFIG_getWord(bus, slot, 4, 0);
+	return _PCI_CONFIG_getWord(bus, slot, 0, 4);
 }
 
 uint16_t _PCI_getStatus(uint8_t bus, uint8_t slot)
 {
-	return _PCI_CONFIG_getWord(bus, slot, 4, 2);
+	return _PCI_CONFIG_getWord(bus, slot, 0, 6);
 }
 
 uint8_t _PCI_getRevisionID(uint8_t bus, uint8_t slot)
 {
-	return (uint8_t) (_PCI_CONFIG_getWord(bus, slot, 8, 0) & 0xFF);
+	return (uint8_t) (_PCI_CONFIG_getWord(bus, slot, 0, 8) & 0xFF);
 }
 
 uint8_t _PCI_getProgIF(uint8_t bus, uint8_t slot)
 {
-	return (uint8_t) (_PCI_CONFIG_getWord(bus, slot, 8, 0) >> 8) & 0xFF;
+	return (uint8_t) (_PCI_CONFIG_getWord(bus, slot, 0, 8) >> 8) & 0xFF;
 }
 
 uint8_t _PCI_getSubclass(uint8_t bus, uint8_t slot)
 {
-	return (uint8_t) (_PCI_CONFIG_getWord(bus, slot, 8, 2) & 0xFF);
+	return (uint8_t) (_PCI_CONFIG_getWord(bus, slot, 0, 0xA) & 0xFF);
 }
 
 uint8_t _PCI_getClass(uint8_t bus, uint8_t slot)
 {
-	return (uint8_t) (_PCI_CONFIG_getWord(bus, slot, 8, 2) >> 8) & 0xFF; 
+	return (uint8_t) (_PCI_CONFIG_getWord(bus, slot, 0, 0xA) >> 8) & 0xFF; 
 }
 
 uint8_t _PCI_getCacheSize(uint8_t bus, uint8_t slot)
 {
-	return (uint8_t) (_PCI_CONFIG_getWord(bus, slot, 0xC, 0) & 0xFF);
+	return (uint8_t) (_PCI_CONFIG_getWord(bus, slot, 0, 0xC) & 0xFF);
 }
 
 uint8_t _PCI_getLatencyTimer(uint8_t bus, uint8_t slot)
 {
-	return (uint8_t) (_PCI_CONFIG_getWord(bus, slot, 0xC, 0) >> 8) & 0xFF;
+	return (uint8_t) (_PCI_CONFIG_getWord(bus, slot, 0, 0xC) >> 8) & 0xFF;
 }
 
 uint8_t _PCI_getHeaderType(uint8_t bus, uint8_t slot)
 {
-	return (uint8_t) (_PCI_CONFIG_getWord(bus, slot, 0xC, 2) & 0xFF);
+	return (uint8_t) (_PCI_CONFIG_getWord(bus, slot, 0, 0xE) & 0xFF);
 }
 
 uint8_t _PCI_getBIST(uint8_t bus, uint8_t slot)
 {
-	return (uint8_t) (_PCI_CONFIG_getWord(bus, slot, 0xC, 2) >> 8) & 0xFF; 
+	return (uint8_t) (_PCI_CONFIG_getWord(bus, slot, 0, 0xE) >> 8) & 0xFF; 
 }
 
 void _PCI_scanDevices()
 {
 	uint16_t list = 0;
-	for (uint8_t i = 0; i < 0xFF; i++)
-		for (uint8_t j = 0; j < 0x20; j++)
-			if (_PCI_getVendorID(i, j) != 0xFFFF) {		// Does device exist?
-				_PCI_DEVICE_LIST.Device[list].BUS = i;
-				_PCI_DEVICE_LIST.Device[list].DEVICE = j;
-				_PCI_DEVICE_LIST.Device[list].VendorID = _PCI_getVendorID(i, j);
-				_PCI_DEVICE_LIST.Device[list].DeviceID = _PCI_getDeviceID(i, j);
-				_PCI_DEVICE_LIST.Device[list].Command =  _PCI_getCommand(i, j);
-				_PCI_DEVICE_LIST.Device[list].Status =  _PCI_getStatus(i, j);
-				_PCI_DEVICE_LIST.Device[list].RevisionID =  _PCI_getRevisionID(i, j);
-				_PCI_DEVICE_LIST.Device[list].ProgIF =  _PCI_getProgIF(i, j);
-				_PCI_DEVICE_LIST.Device[list].Subclass =  _PCI_getSubclass(i, j);
-				_PCI_DEVICE_LIST.Device[list].Class =  _PCI_getClass(i, j);
-				_PCI_DEVICE_LIST.Device[list].CacheSize =  _PCI_getCacheSize(i, j);
-				_PCI_DEVICE_LIST.Device[list].LatencyTimer =  _PCI_getLatencyTimer(i, j);
-				_PCI_DEVICE_LIST.Device[list].HeaderType =  _PCI_getHeaderType(i, j);
-				_PCI_DEVICE_LIST.Device[list].BIST =  _PCI_getBIST(i, j);
+	for (uint8_t bus = 0; bus < 0xFF; bus++)
+		for (uint8_t slot = 0; slot < 0x20; slot++) {
+			uint8_t function = 0;
+			if (_PCI_getVendorID(bus, slot) != 0xFFFF) {		// Does device exist?
+				_PCI_DEVICE_LIST.Device[list].BUS = bus;
+				_PCI_DEVICE_LIST.Device[list].DEVICE = slot;
+				_PCI_DEVICE_LIST.Device[list].FUNCTION = function;
+				_PCI_DEVICE_LIST.Device[list].VendorID = _PCI_getVendorID(bus, slot);
+				_PCI_DEVICE_LIST.Device[list].DeviceID = _PCI_getDeviceID(bus, slot);
+				_PCI_DEVICE_LIST.Device[list].Command = _PCI_getCommand(bus, slot);
+				_PCI_DEVICE_LIST.Device[list].Status = _PCI_getStatus(bus, slot);
+				_PCI_DEVICE_LIST.Device[list].RevisionID = _PCI_getRevisionID(bus, slot);
+				_PCI_DEVICE_LIST.Device[list].ProgIF = _PCI_getProgIF(bus, slot);
+				_PCI_DEVICE_LIST.Device[list].Subclass = _PCI_getSubclass(bus, slot);
+				_PCI_DEVICE_LIST.Device[list].Class = _PCI_getClass(bus, slot);
+				_PCI_DEVICE_LIST.Device[list].CacheSize = _PCI_getCacheSize(bus, slot);
+				_PCI_DEVICE_LIST.Device[list].LatencyTimer = _PCI_getLatencyTimer(bus, slot);
+				_PCI_DEVICE_LIST.Device[list].HeaderType = _PCI_getHeaderType(bus, slot);
+				_PCI_DEVICE_LIST.Device[list].BIST = _PCI_getBIST(bus, slot);
 				list++;
 			}
+		}
 	_PCI_DEVICES = list;
 }
 

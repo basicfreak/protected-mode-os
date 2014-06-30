@@ -1,165 +1,200 @@
-/*
-./LIBSRC/DMA.C
-*/
+/* * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *					HARDWARE/DMA.C					 *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "DMA.H"
 #include <STDIO.H>
 
-#define DEBUG
+#include "TIMER.H"
 
-void dma_mask_channel(uint8_t channel)
+///#define DEBUG
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *			   Declare Local Functions				 *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+void _DMA_outb(uint16_t port, uint8_t data);
+uint8_t _DMA_inb(uint16_t port);
+error _DMA_set_Addr(uint8_t channel, uint32_t addr);
+error _DMA_set_Count(uint8_t channel, uint16_t count);
+error _DMA_MASK_CHAN(uint8_t channel);
+error _DMA_UMASK_CHAN(uint8_t channel);
+void _DMA_UMASK_ALL(bool dma);
+error _DMA_MODEREG_Handle(uint8_t channel, uint8_t mode);
+void _DMA_RESET_FF(bool dma);
+void _DMA_RESET(bool dma);
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *			   	   Local Variables					 *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+enum _DMA_PORTS {
+	_DMA0_STATUS_REG = 0x8,			//Status Register(read)
+	_DMA0_COMMAND_REG = 0x8,		//Command Register(write)
+	_DMA0_REQUEST_REG = 0x9,		//Request Register(write)
+	_DMA0_SINGMASK_REG = 0xa,		//Single Mask Register(write)
+	_DMA0_MODE_REG = 0xb,			//Mode Register(write)
+	_DMA0_CLEARBYTE_FF_REG = 0xc,	//Clear Byte Pointer Flip-Flop (write)
+	_DMA0_TEMP_REG = 0xd,			//Intermediate Register(read)
+	_DMA0_MASTER_CLEAR_REG = 0xd,	//Master Clear(write)
+	_DMA0_CLEAR_MASK_REG = 0xe,		//Clear Mask Register(write)
+	_DMA0_MASK_REG = 0xf,			//Write Mask Register(write)
+
+	_DMA1_STATUS_REG = 0xd0,
+	_DMA1_COMMAND_REG = 0xd0,
+	_DMA1_REQUEST_REG = 0xd2,
+	_DMA1_SINGMASK_REG = 0xd4,
+	_DMA1_MODE_REG = 0xd6,
+	_DMA1_CLEARBYTE_FF_REG = 0xd8,
+	_DMA1_INTER_REG = 0xda,
+	_DMA1_MASTER_CLEAR_REG = 0xda,
+	_DMA1_UNMASK_ALL_REG = 0xdc,
+	_DMA1_MASK_REG = 0xde
+};
+
+uint16_t _DMA_ADDR_REG[8] = { 0x0, 0x2, 0x4, 0x6, 0xC0, 0xC4, 0xC8, 0xCC };
+uint16_t _DMA_COUNT_REG[8] = { 0x1, 0x3, 0x5, 0x7, 0xC2, 0xC6, 0xCA, 0xCE };
+uint16_t _DMA_EXT_PAGE[8] = { 0x87, 0x83, 0x81, 0x82, 0x8F, 0x8B, 0x89, 0x8A };	//ASSUMING AT TYPE SYSTEM
+
+enum _DMA_COMMAND_REG_MASK {
+	_COMMAND_REG_MASK_MEMTOMEM = 1,
+	_COMMAND_REG_MASK_CHAN0ADDRHOLD = 2,
+	_COMMAND_REG_MASK_ENABLE = 4,
+	_COMMAND_REG_MASK_TIMING = 8,
+	_COMMAND_REG_MASK_PRIORITY = 0x10,
+	_COMMAND_REG_MASK_WRITESEL = 0x20,
+	_COMMAND_REG_MASK_DREQ = 0x40,
+	_COMMAND_REG_MASK_DACK = 0x80
+};
+
+enum _DMA_MODE_REG_MASK {
+	_DMA_MODE_SEL = 3,
+	_DMA_MODE_TRA = 0xc,
+	_DMA_MODE_SELF_TEST = 0,
+	_DMA_MODE_READ_TRANSFER =4,
+	_DMA_MODE_WRITE_TRANSFER = 8,
+	_DMA_MODE_AUTO = 0x10,
+	_DMA_MODE_IDEC = 0x20,
+	_DMA_MODE = 0xc0,
+	_DMA_MODE_TRANSFER_ON_DEMAND= 0,
+	_DMA_MODE_TRANSFER_SINGLE = 0x40,
+	_DMA_MODE_TRANSFER_BLOCK = 0x80,
+	_DMA_MODE_TRANSFER_CASCADE = 0xC0
+};
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *			   	   Local Functions					 *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+void _DMA_outb(uint16_t port, uint8_t data)
 {
 #ifdef DEBUG
-	txf(1, "(DMA.C:Line 10) dma_mask_channel(0x%x)\n\r", channel);
+	txf(1, "_DMA_outb(0x%x, 0x%x)\n\r", port, data);
 #endif
-	if (channel <= 4)
-		outb(DMA0_CHANMASK_REG, (uint8_t) (1 << (channel-1)));
-	else
-		outb(DMA1_CHANMASK_REG, (uint8_t) (1 << (channel-5)));
+	outb(port, data);
 }
 
-// unmasks a channel
-void dma_unmask_channel (uint8_t channel)
+uint8_t _DMA_inb(uint16_t port)
 {
+	uint8_t data = inb(port);
 #ifdef DEBUG
-	txf(1, "(DMA.C:Line 22) dma_mask_channel(0x%x)\n\r", channel);
+	txf(1, "_DMA_inb(0x%x) = 0x%x\n\r", port, data);
 #endif
-	if (channel <= 4)
-		outb(DMA0_CHANMASK_REG, channel);
-	else
-		outb(DMA1_CHANMASK_REG, channel);
+	return data;
 }
 
-// unmasks all channels
-void dma_unmask_all ()
+error _DMA_set_Addr(uint8_t channel, uint32_t addr)		//Sets all address data
 {
-#ifdef DEBUG
-	txf(1, "(DMA.C:Line 32) dma_unmask_all()\n\r");
-#endif
-	// it doesnt matter what is written to this register
-	outb(DMA1_UNMASK_ALL_REG, 0xff);
+	if(channel > 7)
+		return ERROR_INPUT;
+	if(addr > 0xFF0000)
+		return ERROR_INPUT;
+	uint8_t ext_addr, high_addr, low_addr;
+	low_addr = (uint8_t) (addr & 0xFF);
+	high_addr = (uint8_t) ((addr >> 8) & 0xFF);
+	ext_addr = (uint8_t) ((addr >> 16) & 0xFF);
+	_DMA_outb(_DMA_ADDR_REG[channel], low_addr);
+	_DMA_outb(_DMA_ADDR_REG[channel], high_addr);
+	_DMA_outb(_DMA_EXT_PAGE[channel], ext_addr);
+	return ERROR_NONE;
 }
 
-// resets controller to defaults
-void dma_reset ()
+error _DMA_set_Count(uint8_t channel, uint16_t count)
 {
-#ifdef DEBUG
-	txf(1, "(DMA.C:Line 44) dma_reset()\n\r");
-#endif
-	// it doesnt matter what is written to this register
-	outb(DMA0_TEMP_REG, 0xff);
+	if(channel > 7)
+		return ERROR_INPUT;
+	count--;
+	uint8_t high_count, low_count;
+	low_count = (uint8_t) (count & 0xFF);
+	high_count = (uint8_t) ((count >> 8) & 0xFF);
+	_DMA_outb(_DMA_COUNT_REG[channel], low_count);
+	_DMA_outb(_DMA_COUNT_REG[channel], high_count);
+	return ERROR_NONE;
 }
 
-// resets flipflop
-void dma_reset_flipflop(int dma)
+error _DMA_MASK_CHAN(uint8_t channel)
 {
-#ifdef DEBUG
-	txf(1, "(DMA.C:Line 54) dma_reset_flipflop(0x%x)\n\r", dma);
-#endif
-	if (dma < 2)
-		return;
-	// it doesnt matter what is written to this register
-	outb( (dma==0) ? DMA0_CLEARBYTE_FLIPFLOP_REG : DMA1_CLEARBYTE_FLIPFLOP_REG, 0xff);
+	if(channel > 7)
+		return ERROR_INPUT;
+	bool dma = ((channel < 4) ? false : true);
+	uint8_t chan = ((dma) ? (uint8_t) (channel - 4) : channel);
+	_DMA_outb(((dma) ? _DMA1_SINGMASK_REG : _DMA0_SINGMASK_REG), (uint8_t) (1 << chan));
+	return ERROR_NONE;
 }
 
-// sets the address of a channel
-void dma_set_address(uint8_t channel, uint8_t low, uint8_t high)
+error _DMA_UMASK_CHAN(uint8_t channel)
 {
-#ifdef DEBUG
-	txf(1, "(DMA.C:Line 66) dma_set_address(0x%x, 0x%x, 0x%x)\n\r", channel, low, high);
-#endif
-	if ( channel > 8 )
-		return;
-	unsigned short port = 0;
-	switch ( channel ) {
-		case 0: {port = DMA0_CHAN0_ADDR_REG; break;}
-		case 1: {port = DMA0_CHAN1_ADDR_REG; break;}
-		case 2: {port = DMA0_CHAN2_ADDR_REG; break;}
-		case 3: {port = DMA0_CHAN3_ADDR_REG; break;}
-		case 4: {port = DMA1_CHAN4_ADDR_REG; break;}
-		case 5: {port = DMA1_CHAN5_ADDR_REG; break;}
-		case 6: {port = DMA1_CHAN6_ADDR_REG; break;}
-		case 7: {port = DMA1_CHAN7_ADDR_REG; break;}
-	}
-	outb(port, low);
-	outb(port, high);
+	if(channel > 7)
+		return ERROR_INPUT;
+	bool dma = ((channel < 4) ? false : true);
+	uint8_t chan = ((dma) ? (uint8_t) (channel - 4) : channel);
+	_DMA_outb(((dma) ? _DMA1_SINGMASK_REG : _DMA0_SINGMASK_REG), chan);
+	return ERROR_NONE;
 }
 
-// sets the counter of a channel
-void dma_set_count(uint8_t channel, uint8_t low, uint8_t high)
+void _DMA_UMASK_ALL(bool dma)
 {
-#ifdef DEBUG
-	txf(1, "(DMA.C:Line 89) dma_set_count(0x%x, 0x%x, 0x%x)\n\r", channel, low, high);
-#endif
-	if ( channel > 8 )
-		return;
-	unsigned short port = 0;
-	switch ( channel ) {
-		case 0: {port = DMA0_CHAN0_COUNT_REG; break;}
-		case 1: {port = DMA0_CHAN1_COUNT_REG; break;}
-		case 2: {port = DMA0_CHAN2_COUNT_REG; break;}
-		case 3: {port = DMA0_CHAN3_COUNT_REG; break;}
-		case 4: {port = DMA1_CHAN4_COUNT_REG; break;}
-		case 5: {port = DMA1_CHAN5_COUNT_REG; break;}
-		case 6: {port = DMA1_CHAN6_COUNT_REG; break;}
-		case 7: {port = DMA1_CHAN7_COUNT_REG; break;}
-	}
-	outb(port, low);
-	outb(port, high);
+	_DMA_outb(((dma) ? _DMA1_UNMASK_ALL_REG : _DMA0_CLEAR_MASK_REG), 0xFF);
 }
 
-void dma_set_mode (uint8_t channel, uint8_t mode)
+error _DMA_MODEREG_Handle(uint8_t channel, uint8_t mode)
 {
-#ifdef DEBUG
-	txf(1, "(DMA.C:Line 111) dma_set_mode(0x%x, 0x%x)\n\r", channel, mode);
-#endif
-	int dma = (channel < 4) ? 0 : 1;
-	int chan = (dma==0) ? channel : channel-4;
-
-	dma_mask_channel (channel);
-	outb ( (channel < 4) ? (DMA0_MODE_REG) : DMA1_MODE_REG, (uint8_t) (chan | (mode)) );
-	dma_unmask_all ();
+	if(channel > 7)
+		return ERROR_INPUT;
+	bool dma = ((channel < 4) ? false : true);
+	uint8_t chan = ((dma) ? (uint8_t) (channel - 4) : channel);
+	_DMA_outb(((dma) ? _DMA1_MODE_REG : _DMA0_MODE_REG), (chan | mode));
+	return ERROR_NONE;
 }
 
-// prepares channel for read
-void dma_set_read (uint8_t channel)
+void _DMA_RESET_FF(bool dma)
 {
-#ifdef DEBUG
-	txf(1, "(DMA.C:Line 125) dma_set_read(0x%x)\n\r", channel);
-#endif
-	dma_set_mode (channel,	DMA_MODE_READ_TRANSFER | DMA_MODE_TRANSFER_SINGLE);
+	outb(((dma) ? _DMA1_CLEARBYTE_FF_REG : _DMA0_CLEARBYTE_FF_REG), 0xff);
 }
 
-// prepares channel for write
-void dma_set_write (uint8_t channel)
+void _DMA_RESET(bool dma)
 {
-#ifdef DEBUG
-	txf(1, "(DMA.C:Line 134) dma_set_write(0x%x)\n\r", channel);
-#endif
-	dma_set_mode (channel,
-		DMA_MODE_WRITE_TRANSFER | DMA_MODE_TRANSFER_SINGLE);
+	outb(((dma) ? _DMA1_MASTER_CLEAR_REG : _DMA0_MASTER_CLEAR_REG), 0xFF);
 }
 
-// writes to an external page register
-void dma_set_external_page_register (uint8_t reg, uint8_t val)
+/* * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *			   	  Public Functions					 *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+error _DMA_Setup(uint8_t channel, bool write, uint32_t addr, uint16_t count)
 {
-#ifdef DEBUG
-	txf(1, "(DMA.C:Line 144) dma_set_external_page_register(0x%x, 0x%x)\n\r", reg, val);
-#endif
-	if (reg > 14)
-		return;
-
-	unsigned short port = 0;
-	switch ( reg ) {
-
-		case 1: {port = DMA_PAGE_CHAN1_ADDRBYTE2; break;}
-		case 2: {port = DMA_PAGE_CHAN2_ADDRBYTE2; break;}
-		case 3: {port = DMA_PAGE_CHAN3_ADDRBYTE2; break;}
-		case 4: {return;}// nothing should ever write to register 4
-		case 5: {port = DMA_PAGE_CHAN5_ADDRBYTE2; break;}
-		case 6: {port = DMA_PAGE_CHAN6_ADDRBYTE2; break;}
-		case 7: {port = DMA_PAGE_CHAN7_ADDRBYTE2; break;}
-	}
-
-	outb(port, val);
+	if(channel>7 || addr>0xFF0000)
+		return ERROR_INPUT;
+	error errorcode = ERROR_NONE;
+	if((errorcode = _DMA_MASK_CHAN(channel)))
+		return errorcode;
+	if((errorcode = _DMA_MODEREG_Handle(channel, ((write) ? 0x4A : 0x46))))
+		return errorcode;
+	if((errorcode = _DMA_set_Addr(channel, addr)))
+		return errorcode;
+	if((_DMA_set_Count(channel, count)))
+		return errorcode;
+	if((errorcode = _DMA_UMASK_CHAN(channel)))
+		return errorcode;
+	return ERROR_NONE;
 }

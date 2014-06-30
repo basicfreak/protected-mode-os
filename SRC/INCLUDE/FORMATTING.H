@@ -134,4 +134,15 @@
 	#define false 0
 	#define FALSE 0
 
+	typedef uint8_t error;
+	typedef uint16_t error_data_u8_t;
+
+	enum _FDC_ERROR_TYPES {
+		ERROR_NONE = 0,
+		ERROR_HWFAILURE = 0x10,
+		ERROR_TIMEOUT = 0x20,
+		ERROR_UNDEFINED_BEHAVIOR = 0x40,
+		ERROR_INPUT = 0x80
+	};
+
 #endif

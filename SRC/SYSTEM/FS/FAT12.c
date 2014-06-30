@@ -7,9 +7,10 @@
 #include <STRING.H>
 #include <STDIO.H>
 #include "../../HARDWARE/FDC.H"
+#include "../MEM/PHYSICAL.H"
 #include <MATH.H>
 
-#define debug 0
+///#define debug 0
 
 #define SECTOR_SIZE 512
 FILESYSTEM _FSysFat;
@@ -19,6 +20,7 @@ RDIRS FATRDIR;
 PRDIR _ROOTdir;
 RDIRS TempDir;
 PRDIR _CurDir;
+uint8_t dataBuffer[0x2400] = { 0 };
 
 
 void ToDosFileName (const char* filename, char* fname, unsigned int FNameLength);
@@ -31,7 +33,9 @@ void fsysFatClose (PFILE file);
 
 void FATBlock_init()
 {
-	uint8_t* data = floppy_readSector(1, 9);
+	uint8_t* data = (uint8_t*) &dataBuffer;
+	memset(data, 0, sizeof(dataBuffer));
+	_FDC_IO(false, 1, 9, data);
 	for (int i = 0; i < (SECTOR_SIZE * 9 * 8)/12; i++) {
 		uint16_t clust = (uint16_t) (i * 1.5);
 		uint16_t value = 0;
@@ -41,9 +45,7 @@ void FATBlock_init()
 			FATBlock[i] = value & 0x0FFF;
 		else
 			FATBlock[i] = (value >> 4);
-		if (debug) printf("%x ",FATBlock[i]);
 	}
-	if (debug) puts("\n");
 }
 
 uint16_t Cluster(uint16_t cluster)
@@ -53,12 +55,13 @@ uint16_t Cluster(uint16_t cluster)
 
 void ROOTdir_init()
 {
-	PRDIR data = (PRDIR) floppy_readSector(19, 14);
+	PRDIR* data = (PRDIR*) &dataBuffer;
+	memset(data, 0, sizeof(dataBuffer));
+	_FDC_IO(false, 19, 14, data);
 	memcpy(&FATRDIR, data, SECTOR_SIZE*14);
 	for (int i = 0; i < 224; i++) {
 		_ROOTdir->entry[i] = &(FATRDIR.entry[i]);
 	}
-	if(debug)dirTest();
 }
 
 void dirTest()
@@ -101,8 +104,6 @@ void dirTest()
 
 FILE SearchSubDirectory(FILE subDir, const char* FName)
 {
-	if (debug) printf("SearchSubDirectory(FILE, %s)\n", FName);
-
 	FILE ret;
 	ret.flags = FS_INVALID;
 	
@@ -171,7 +172,6 @@ void ToDosFileName (const char* filename, char* fname, unsigned int FNameLength)
 
 FILE fsysFatDirectory (const char* DirectoryName)
 {
-	if (debug) printf("fsysFatDirectory(%s)\n", DirectoryName);
 	FILE file;
 	// get 8.3 directory name
 	char DosFileName[12];
@@ -209,24 +209,18 @@ FILE fsysFatDirectory (const char* DirectoryName)
 
 void fsysFatRead(PFILE file, unsigned char* Buffer, unsigned int Length)
 {
-	if (debug) printf("fsysFatRead(FILE, %x, %x)\n", Buffer, Length);
 	if (file) {
-		unsigned char* sector = (unsigned char*) floppy_readSector ( (int) (31 + file->currentCluster), 1 );
+		uint8_t* sector = (uint8_t*) &dataBuffer;
+		memset(sector, 0, sizeof(dataBuffer));
+		_FDC_IO(false, (int) (31 + file->currentCluster), (uint8_t) (Length / 0x200), sector);
 		// copy block of memory
-		memcpy (Buffer, sector, 512);
+		memcpy (Buffer, sector, (size_t)Length);
 		// read entry for next cluster
 		uint16_t nextCluster = Cluster((uint16_t) file->currentCluster);
-		if ( nextCluster >= 0xff8) {
+		if ( !nextCluster || nextCluster >= 0xff8)
 			file->eof = 1;
-			return;
-		}
-		// test for file corruption
-		if ( nextCluster == 0 ) {
-			file->eof = 1;
-			return;
-		}
-		// set next cluster
-		file->currentCluster = nextCluster;
+		else	// set next cluster
+			file->currentCluster = nextCluster;
 	}
 }
 
@@ -238,7 +232,6 @@ void fsysFatClose (PFILE file)
 
 FILE fsysFatOpen (const char* FileName)
 {
-	if (debug) printf("fsysFatOpen(%s)\n", FileName);
 	FILE curDirectory;
 	char* p = 0;
 	char* path = (char*) FileName;
@@ -255,7 +248,6 @@ FILE fsysFatOpen (const char* FileName)
 		char out[50][100];
 		int temp = explode( out, (const char *)path, '\\' );
 		for (int z = 0; z < temp; z ++) {
-			if (debug) printf("%i = %s\n", z, out[z]);
 			if (!z) { // z = 0 looking for first sub dir
 				curDirectory = fsysFatDirectory (out[z]);
 				// found file?
@@ -264,8 +256,7 @@ FILE fsysFatOpen (const char* FileName)
 					ret.flags = FS_INVALID;
 					return ret;
 				}
-			}
-			else {
+			} else {
 				curDirectory =  SearchSubDirectory(curDirectory, out[z]);
 				//curDirectory = fsysFatDirectory (out[z]);
 				if (curDirectory.flags != FS_DIRECTORY) { //subdirectory NOT found
@@ -305,9 +296,10 @@ void fsysFatInitialize ()
 void fsysFatMount ()
 {
 	// Boot sector info
-	PBOOTSECTOR bootsector;
-	// read boot sector
-	bootsector = (PBOOTSECTOR) floppy_readSector ( 0, 1 );
+	PBOOTSECTOR bootsector = (PBOOTSECTOR) &dataBuffer;
+	memset(bootsector, 0, sizeof(dataBuffer));
+	// Read Boot Sector
+	_FDC_IO(false, 0, 1, bootsector);
 	// store mount info
 	_MountInfo.numSectors     = bootsector->Bpb.NumSectors;
 	_MountInfo.fatOffset      = 1;

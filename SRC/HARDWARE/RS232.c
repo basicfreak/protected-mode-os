@@ -12,8 +12,8 @@ uint16_t COMS[5] = {0, 0, 0, 0, 0};
 uint16_t COM1, COM2, COM3, COM4;
 uint8_t COM1_ID, COM2_ID, COM3_ID, COM4_ID;
 
-void write(uint16_t COM, uint8_t OFF, uint8_t DATA);
-uint8_t read(uint16_t COM, uint8_t OFF);
+void _UART_Write(uint16_t COM, uint8_t OFF, uint8_t DATA);
+uint8_t _UART_Read(uint16_t COM, uint8_t OFF);
 void IER_handle(uint16_t COM, bool RX, bool TX, bool LS, bool MS);
 bool INT_ID(uint16_t COM);
 uint8_t COM_ID(uint16_t COM);
@@ -132,12 +132,12 @@ enum MSR_BREAKDOWN {
 	MSR_CarrierDetect = 0x80
 };
 
-void write(uint16_t COM, uint8_t OFF, uint8_t DATA)
+void _UART_Write(uint16_t COM, uint8_t OFF, uint8_t DATA)
 {
 	outb((uint16_t)(COM+(uint16_t)OFF), DATA);
 }
 
-uint8_t read(uint16_t COM, uint8_t OFF)
+uint8_t _UART_Read(uint16_t COM, uint8_t OFF)
 {
 	return (uint8_t) inb((uint16_t)(COM+(uint16_t)OFF));
 }
@@ -153,7 +153,7 @@ void IER_handle(uint16_t COM, bool RX, bool TX, bool LS, bool MS)
 		temp |= IER_LineStatus;
 	if (MS)
 		temp |= IER_ModemStatus;
-	write(COM, IER, temp);
+	_UART_Write(COM, IER, temp);
 }
 
 bool INT_ID(uint16_t COM)
@@ -172,7 +172,7 @@ bool INT_ID(uint16_t COM)
 };*/
 
 	// I only care about RX info
-	uint8_t temp = read(COM, IIR);
+	uint8_t temp = _UART_Read(COM, IIR);
 	if (temp & (IIR_RXData) && !temp & (IIR_Pending))
 		return true;
 	return false;
@@ -182,8 +182,8 @@ uint8_t COM_ID(uint16_t COM)
 {
 	uint8_t temp;
 	
-	write(COM, FCR, (FCR_16_14 | FCR_ClearTX | FCR_ClearRX | FCR_Enable));
-	temp = read(COM, IIR);
+	_UART_Write(COM, FCR, (FCR_16_14 | FCR_ClearTX | FCR_ClearRX | FCR_Enable));
+	temp = _UART_Read(COM, IIR);
 	if (temp & 0x40) {
 		if (temp & 0x80) {
 			if (temp & 0x20)
@@ -193,8 +193,8 @@ uint8_t COM_ID(uint16_t COM)
 		} else
 			return _16550;
 	} else {
-		write(COM, SR, 0xA5);
-		if (read(COM, SR) == 0xA5)
+		_UART_Write(COM, SR, 0xA5);
+		if (_UART_Read(COM, SR) == 0xA5)
 			return _16450;
 		else
 			return _8250;
@@ -210,34 +210,34 @@ void setBaudRate(uint16_t COM, uint32_t RATE)
 	HI_RATE = (uint8_t) ((115200 / RATE) >> 8);
 	
 	IER_handle(COM, false, false, false, false);							//Disable IRQ
-	write(COM, FCR, (FCR_ClearRX | FCR_ClearTX));							//Disable FIFO
-	write(COM, LCR, LCR_DLAB);												//DLAB
-	write(COM, DLL, LO_RATE);												//Data Rate Low
-	write(COM, DLH, HI_RATE);												//Data Rate High
-	write(COM, LCR, LCR_8Bits);												//Line Control
-	write(COM, FCR,(FCR_Enable | FCR_ClearRX | FCR_ClearTX | FCR_16_1));	//Enable FIFO - 1 BYTE BUFFER NOTIFY
-	write(COM, MCR, (MCR_DataTermRdy | MCR_RequestSend | MCR_AuxOut2));
+	_UART_Write(COM, FCR, (FCR_ClearRX | FCR_ClearTX));							//Disable FIFO
+	_UART_Write(COM, LCR, LCR_DLAB);												//DLAB
+	_UART_Write(COM, DLL, LO_RATE);												//Data Rate Low
+	_UART_Write(COM, DLH, HI_RATE);												//Data Rate High
+	_UART_Write(COM, LCR, LCR_8Bits);												//Line Control
+	_UART_Write(COM, FCR,(FCR_Enable | FCR_ClearRX | FCR_ClearTX | FCR_16_1));	//Enable FIFO - 1 BYTE BUFFER NOTIFY
+	_UART_Write(COM, MCR, (MCR_DataTermRdy | MCR_RequestSend | MCR_AuxOut2));
 	IER_handle(COM, true, false, false, false);								//Enable IRQ for RX only
-	(void) read(COM, RBR);	//read to clear things up? - linux 0.96c code idea (seemed to fix my irq issues)
+	(void) _UART_Read(COM, RBR);	//read to clear things up? - linux 0.96c code idea (seemed to fix my irq issues)
 }
 
 void tx(uint16_t COM, uint8_t DATA)
 {
-	while ((read(COM, LSR) & 0x20) != 0x20);
-	write(COM, THR, DATA);
+	while ((_UART_Read(COM, LSR) & 0x20) != 0x20);
+	_UART_Write(COM, THR, DATA);
 }
 
 uint8_t rx(uint16_t COM)
 {
-	while ((read(COM, LSR) & 1) != 1 );
-	return read(COM, RBR);
+	while ((_UART_Read(COM, LSR) & 1) != 1 );
+	return _UART_Read(COM, RBR);
 }
 
 void _RS232_handler(regs *r)
 {
 	if(r->eax){}
 	if(COM1)
-		while((read(COM1, IIR) & 0xC5) == 0xC4) {
+		while((_UART_Read(COM1, IIR) & 0xC5) == 0xC4) {
 			uint8_t data = rx(COM1);				//Get Char
 			if(data)								//If Valid Data
 				switch (data) {						//Check Data
@@ -256,7 +256,7 @@ void _RS232_handler(regs *r)
 				}
 		}
 	if(COM2)
-		while((read(COM2, IIR) & 0xC5) == 0xC4) {
+		while((_UART_Read(COM2, IIR) & 0xC5) == 0xC4) {
 			uint8_t data = rx(COM1);				//Get Char
 			if(data) {								//If Valid Data
 				if (data == 0xD) {					// ENTER PRESSED
@@ -269,7 +269,7 @@ void _RS232_handler(regs *r)
 			}
 		}
 	if(COM3)
-		while((read(COM3, IIR) & 0xC5) == 0xC4) {
+		while((_UART_Read(COM3, IIR) & 0xC5) == 0xC4) {
 			uint8_t data = rx(COM1);				//Get Char
 			if(data) {								//If Valid Data
 				if (data == 0xD) {					// ENTER PRESSED
@@ -282,7 +282,7 @@ void _RS232_handler(regs *r)
 			}
 		}
 	if(COM4)
-		while((read(COM4, IIR) & 0xC5) == 0xC4) {
+		while((_UART_Read(COM4, IIR) & 0xC5) == 0xC4) {
 			uint8_t data = rx(COM1);				//Get Char
 			if(data) {								//If Valid Data
 				if (data == 0xD) {					// ENTER PRESSED
