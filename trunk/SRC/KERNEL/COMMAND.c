@@ -26,7 +26,8 @@ void load(const char* path);
 void CopyFloppyTest(void);
 
 char *CurrentPath;
-char cmd_command[1024];
+//char cmd_command[1024];
+char *cmd_command;
 char explode_cmd[50][100];
 const char *DataToWrite = "             ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 1234567890                ";
 uint8_t *readbuffer;
@@ -140,6 +141,11 @@ void do_CMD(unsigned int args)
 	}
 	else if (streql(explode_cmd[0], "kill"))
 		KillThread((uint16_t) textTOhex(explode_cmd[1]));
+	/*else if (streql(explode_cmd[0], "threadenable")) {
+		_THREAD_MAN_enable();
+		for(;;)
+			putch('.');
+	}*/
 	else
 		printf("Invalid Command \"%s\"\n", cmd_command);
 }
@@ -169,7 +175,7 @@ void init_cmd()
 	txf(1, "(COMMAND.C:Line 128) init_cmd()\n\r");
 #endif
 	readbuffer = calloc(4);
-	cmd_command[0] = '\0';
+	cmd_command = calloc(1);
 	CurrentPath = (char *)"A:\\";
 	setColor (0x07);
 	puts ("MyDOS v. 0.1\n");
@@ -248,37 +254,33 @@ void load(const char* path)
 #ifdef DEBUG
 	txf(1, "(COMMAND.C:Line 207) load(%s)\n\r", path);
 #endif
-	//! open file
+	//! load file
 	FILE file = VFS_OpenFile (path);
 	//! test for invalid file
 	if (file.flags == FS_INVALID) {
 		printf ("\n\rUnable to open file\n");
 		return;
 	}
-	//! cant display directories
+	//! cant load directories
 	if (( file.flags & FS_DIRECTORY ) == FS_DIRECTORY) {
 		printf ("\n\rUnable to display contents of directory.\n");
 		return;
 	}
-	//_THREAD_MAN_disable();
+	_THREAD_MAN_disable();
 	uint16_t task = AddThread(0x800000, 0xFF, true);
 	uint8_t *location = (uint8_t*) THREAD[task].physaddr;
-	//! top line
-	//! display file contents
 	unsigned int x = 0;
 	while (file.eof != 1) {
 		//! read cluster
 		unsigned char buf[512];
 		VFS_ReadFile ( &file, buf, 512);
-		//! display file
-		///for (int i=0; i<512; i++)
 			memcpy (&location[x*0x200], buf, 0x200);
 		x++;
-		//! wait for input to continue if not EOF
 	}
 	THREAD[task].flags = 0x01;
-	//_THREAD_MAN_enable();
+	_THREAD_MAN_enable();
 	//! done :)
+	//for(uint32_t i = 0; i < 0xAAAAAAAA;i++) printf("%x\n", i);
 }
 
 void CopyFloppyTest()

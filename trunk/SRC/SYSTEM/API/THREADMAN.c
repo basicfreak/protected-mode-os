@@ -10,15 +10,17 @@ void KillCurrentThreadISRs(regs *r);
 
 #define DEBUG
 
-uint16_t Current_Thread = 1; // 0 always refers to idle thread - 1 will be kernel all info will be saved on first task switch (hopefully...)
+uint16_t Current_Thread = 0xFFFF; // 0 always refers to idle thread - 1 will be kernel all info will be saved on first task switch (hopefully...)
 
-extern void _SYSTEM_IDLE_THREAD(void); // thread 0
+extern void _SYSTEM_IDLE_THREAD(void);	// Thread 0
+extern void _init2(void);				// Stage 2 of kernel
 bool forceidleonecycle = false;
 
 void _THREAD_MAN_PIT_ENTRY(tregs *r)
 {
 	// Save current Threads Register Information
-	memcpy(&THREAD[Current_Thread].registers, r, sizeof(tregs));
+	if(Current_Thread != 0xFFFF)
+		memcpy(&THREAD[Current_Thread].registers, r, sizeof(tregs));
 	// Find next thread
 	uint16_t Next_Thread;
 	/*if(THREAD[2].flags != 0x01) {
@@ -49,11 +51,8 @@ void _THREAD_MAN_init()
 	txf(1, "\n\r(THREADMAN.C:Line 46) _THREAD_MAN_init()\n\r");
 #endif
 	memset (&THREAD, 0, sizeof(tregs) * MAX_THREADS); // Clear Thread Table
-	puts("Done.\n\t\tADDING IDLE THREAD... #");
 	AddThread((uint32_t) &_SYSTEM_IDLE_THREAD, 0xFF, 0);
-	puts("Done.\n\t\tADDING KERNEL THREAD... #");
-	AddThread(0, 0x01, 0);
-	puts("Done.\n\tEnable Tasking...");
+	AddThread((uint32_t) &_init2, 0x01, 0);
 	_THREAD_MAN_enable();
 }
 
@@ -140,8 +139,13 @@ uint16_t AddThread(uint32_t location, uint8_t flags, bool user)
 		tempreg.ds = 0x10;
 		tempreg.ss = 0x10;
 		tempreg.cs = 0x08;
-		tempreg.useresp = Kernel_Stack();
-		THREAD[task].cr3 = Kernel_Page_Dir_Address();//vmmngr_get_directory();
+
+		//tempreg.useresp = Kernel_Stack();
+
+		uint8_t *NEWSTACK = calloc(2);
+		tempreg.useresp = (uint32_t) &NEWSTACK[0x1FFF];
+		
+		THREAD[task].cr3 = Kernel_Page_Dir_Address();
 		THREAD[task].physaddr = 0x100000;
 	} else {			// User Thread
 		tempreg.gs = 0x23;
@@ -151,7 +155,6 @@ uint16_t AddThread(uint32_t location, uint8_t flags, bool user)
 		tempreg.ss = 0x23;
 		tempreg.cs = 0x1B;
 		tempreg.useresp = 0xBFFFFFFF;
-// NEED TO SETUP NEW PDIR FOR USER TASKS... LATER
 		THREAD[task].cr3 = Create_Process_Directory(4096, (uint32_t*) &THREAD[task].physaddr);
 	}					// Common
 	tempreg.eip = (uint32_t)location;

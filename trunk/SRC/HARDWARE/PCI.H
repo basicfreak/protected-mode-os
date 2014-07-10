@@ -24,7 +24,7 @@
 		uint8_t		LatencyTimer;
 		uint8_t		HeaderType;
 		uint8_t		BIST;				// Built In Self Test
-		uint8_t		HeadID;				// Private ID.
+		uint16_t		HeadID;				// Private ID.
 	}PCIDEV;
 
 	typedef struct _PCI_HEAD_00h {
@@ -40,18 +40,28 @@
 		uint8_t		SecLatencyTimer, SubBus, SecBus, PriBus, IOlimit, IObase, CapabilitiesPointer, IntPIN, IntLine;
 	}PCIHEAD01h;
 
-	
+	/* I'LL Do this later as I have no need now...
 	typedef struct _PCI_HEAD_02h
 	{
-		uint32_t	BMA[2], PrefetchBase, PrefetchLimit, ExROM;
-		uint16_t	SecStat, MemLimit, MemBase, PrefetchMemLimit, PrefetchMemBase, IOlimitUper, IObaseUper, BridgeCtrl;
-		uint8_t		SecLatencyTimer, SubBus, SecBus, PriBus, IOlimit, IObase, CapabilitiesPointer, IntPIN, IntLine;
-	}PCIHEAD02h;
+		uint32_t	ExCaBase, 
+		uint16_t	SecStat, 
+		uint8_t		CapabilitiesOffest, 
+	}PCIHEAD02h;*/
 
 
 	typedef struct _PCI_DEVICE_HEADERS {
-		PCIDEV	Device[512]; // But really would someone have this many?!? If so I need to increase this...
+		PCIDEV	Device[2048]; // But really would someone have this many?!? If so I need to increase this...
 	}PCIDEVLIST;
+	typedef struct _PCI_DEVICE_HEADERS00h {
+		PCIHEAD00h	Device[1024]; // But really would someone have this many?!? If so I need to increase this...
+	}PCIDEVLIST00h;
+	typedef struct _PCI_DEVICE_HEADERS01h {
+		PCIHEAD01h	Device[1024]; // But really would someone have this many?!? If so I need to increase this...
+	}PCIDEVLIST01h;
+
+	uint16_t _PCI_DEVICES;
+	uint16_t _PCI_DEVICES00h;
+	uint16_t _PCI_DEVICES01h;
 	
 	void _PCI_init(void);
 	

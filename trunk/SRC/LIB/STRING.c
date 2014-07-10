@@ -169,10 +169,10 @@ char* charchange(const char in)
 	return ret;
 }
 
-int stringf(char *str, const char *format, ...)
+int stringf(char *str, const char *format, va_list ap)
 {
-	va_list ap;
-	va_start(ap,format);
+	//va_list ap;
+	//va_start(ap,format);
 	size_t loc=0;
 	size_t i;
 	for (i=0 ; i<=strlen(format);i++, loc++)

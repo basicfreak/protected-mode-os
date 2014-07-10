@@ -24,39 +24,19 @@ char getch(const char *msg)
 
 void gets(char out[1024], const char *msg)
 {
-txf(1, "d");
-	keyboard_buffer = '\0';
-txf(1, "e");
 	puts(msg);
-txf(1, "f");
-	bool i = true;
-txf(1, "g");
-	while (i) {
-//txf(1, "h");
-		if (keyboard_buffer != '\0')
-		{
-txf(1, "i");
-			switch (keyboard_buffer)
-			{
-				case	'\n':
-					puts("\n");
-					i = false;
-					break;
-				case	'\b':
-					if (arrayRemove(out, 1))
-						puts("\b \b");
-					break;
-				default:
-					if (arrayAppend(out, (char) keyboard_buffer)) {
-						putch((char) keyboard_buffer);
-						movcur(curX, curY);
-					}
-					break;
-			}
-txf(1, "j");
-			keyboard_buffer = '\0';
+	char myChar = '\0';
+	while ((myChar = getch("")) != '\n')
+		switch(myChar) {
+			case '\b':
+				if(arrayRemove(out, 1))
+					puts(" \b");
+				break;
+			default:
+				if (arrayAppend(out, myChar)) {
+					movcur(curX, curY);
+				}
 		}
-	}
 }
 
 /*
@@ -98,21 +78,24 @@ void printf(const char *message, ...)
 {
 	va_list ap;
 	va_start(ap, message);
-	size_t i;
+	char *msg = "                                                                                                                               ";
+	stringf(msg, message, ap);
+	puts(msg);
+	/*size_t i;
 	for (i=0 ; i<strlen(message)-1;i++)
 	{
 		switch (message[i]) {
 			case '%':
 				switch (message[i+1])
 				{
-					/*** characters ***/
+					/*** characters ***//*
 					case 'c': {
 						char c = va_arg (ap, char);
 						putch(c);
 						i++;
 						break;
 					}
-					/*** integers ***/
+					/*** integers ***//*
 					case 'd':
 					case 'i':
 					{
@@ -123,7 +106,7 @@ void printf(const char *message, ...)
 						i++;		// go to next character
 						break;
 					}
-					/*** display in hex ***/
+					/*** display in hex ***//*
 					case 'X':
 					case 'x':
 					{
@@ -134,7 +117,7 @@ void printf(const char *message, ...)
 						i++;		// go to next character
 						break;
 					}
-					/*** strings ***/
+					/*** strings ***//*
 					case 's':
 					{
 						char *c = va_arg (ap, char*);
@@ -150,7 +133,7 @@ void printf(const char *message, ...)
 				putch(message[i]);
 				break;
 		}
-	}
+	}*/
 	movcur(curX, curY);
 }
 void printfc(unsigned int cSet, const char *message, ...) {
