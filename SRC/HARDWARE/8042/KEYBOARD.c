@@ -5,6 +5,8 @@
 #include "KEYBOARD.H"
 #include "8042.H"
 #include "../../SYSTEM/CPU/IRQ.H"
+//#include "../../SYSTEM/API/THREADMAN.H"
+#include <stdio.h>
 
 void keyboard_handler(regs *r);
 
@@ -248,9 +250,12 @@ void keyboard_handler(regs *r)
 				keyboard_alt = 1;
 				break;			
 		}
+		
 		if (keyboard_shift == 1) keyboard_buffer = keyboardShift[scancode];
 		if (keyboard_shift == 0) keyboard_buffer = keyboard[scancode];
-    }
+    }/*
+	if (keyboard_buffer == 'p') _THREAD_MAN_PIT_ENTRY(r);
+	putch('.');*/
 }
 
 /* Installs the keyboard handler into IRQ1 */

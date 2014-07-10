@@ -29,17 +29,17 @@ void load(const char* path);
 	extern void enter_usermode(void);
 extern void install_tss (uint8_t idx, uint32_t kernelSS, uint32_t kernelESP);
 extern void tss_set_stack (uint32_t kernelSS, uint32_t kernelESP);
-
 void _exit_(void);
 void _init(void);
-int main(void);/*
+void _init2(void);
+int main(void);
 void fpu_load_control_word(const uint16_t control);
 
 void fpu_load_control_word(const uint16_t control)
 {
     asm volatile("fldcw %0;"::"m"(control)); 
 }
-*/
+
 void _init()
 {
 	initVideo ();
@@ -65,34 +65,38 @@ puts("Done.\nInitilizing PCI...");
 	_PCI_init();
 	__asm__ __volatile__ ("sti");						//DON'T FROGET TO RE-ENABLE INTS OR NOTHING WILL WORK RIGHT!!!!
 puts("Done.\nInitilizing RS232...");
-	_RS232_init();/*
+	_RS232_init();
 fpu_load_control_word(0x37F);
 fpu_load_control_word(0x37E);
-fpu_load_control_word(0x37A);*/
+fpu_load_control_word(0x37A);
 puts("Done.\nInstalling Physical Memory Manager...");
 	_PMem_init ();
 puts("Done.\nInstalling Virtual Memory Manager...");
 	_VMem_init();
-puts("Done.\nInitilizing ThreadMan...");
-	_THREAD_MAN_init();
 puts("Done.\nInstalling Timer...");
 	_TIMER_init();
+puts("Done.\nInitilizing ThreadMan...");
+	_THREAD_MAN_init();
+}
+
+void _init2()
+{
 puts("Done.\nInitilizing i8042...");
-			bool _8042_init_stat = _8042_init();
-			if (_8042_init_stat == 2) {
-				puts("Done.\n\tInstalling PS/2 Keyboard...");
-				_keyboard_init ();
-				puts("Done.\n\tInstalling PS/2 Mouse...Done.\n");
-				_mouse_init ();
-			} else if (_8042_init_stat == 1) {
-				puts("Warning.\n\tInstalling PS/2 Keyboard...");
-				_keyboard_init ();
-				puts("Done.\n\tWARNING:\tNO MOUSE\n");
-			} else {
-				puts("ERROR!\n\tWARNING:\tFORCING KEYBOARD...");
-				_keyboard_init ();
-				puts("Done.\n\tWARNING:\tNO MOUSE\n");
-			}	
+	bool _8042_init_stat = _8042_init();
+	if (_8042_init_stat == 2) {
+		puts("Done.\n\tInstalling PS/2 Keyboard...");
+		_keyboard_init ();
+		puts("Done.\n\tInstalling PS/2 Mouse...Done.\n");
+		_mouse_init ();
+	} else if (_8042_init_stat == 1) {
+		puts("Warning.\n\tInstalling PS/2 Keyboard...");
+		_keyboard_init ();
+		puts("Done.\n\tWARNING:\tNO MOUSE\n");
+	} else {
+		puts("ERROR!\n\tWARNING:\tFORCING KEYBOARD...");
+		_keyboard_init ();
+		puts("Done.\n\tWARNING:\tNO MOUSE\n");
+	}	
 puts("Installing FDC...");
 	_FDC_init();
 puts("Done.\nInstalling FAT12...");
@@ -104,6 +108,10 @@ puts("DONE.\nEnabling User Land...");
 	tss_set_stack(0x10, EsP);
 puts("Done.\n");
 //load("clock.exe");
+	init_cmd();
+	while(CMD_ACTIVE)
+		cmd_handler();
+	_exit_();
 }
 
 void _exit_()
@@ -136,10 +144,8 @@ void _exit_()
 int main()
 {
 	_init();
-	init_cmd ();
-	while(CMD_ACTIVE)
-		cmd_handler();
-	_exit_();
+	//KillThread(1);
+	while(1);
 	return 0;
 }
 

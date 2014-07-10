@@ -22,7 +22,7 @@
 	char* strchr (char * str, int character );
 	char* charchange(const char in);
 	int strlen(const char *str);
-	int stringf(char *str, const char *format, ...);
+	int stringf(char *str, const char *format, va_list ap);
 	void itoa(unsigned i,unsigned base,char* buf);
 	void itoa_s(unsigned i,unsigned base,char* buf);
 	

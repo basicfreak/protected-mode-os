@@ -271,7 +271,7 @@ error FDC_Calibrate(uint8_t drive)
 			return errorcode;
 		if((errorcode = _FDC_WAIT_IR()))
 			return errorcode;
-		uint8_t st0, cyl;
+		uint8_t st0 = 0, cyl = 0;
 		if((errorcode = _FDC_SENSEINT(&st0, &cyl)))
 			return errorcode;
 		if(!cyl) {
@@ -332,7 +332,7 @@ error FDC_Seek(uint8_t drive, uint8_t head, uint8_t cylinder)
 #ifdef DEBUG
 	txf(1, "FDC_Reset(0x%x, 0x%x, 0x%x)\n\r", drive, head, cylinder);
 #endif
-	uint8_t st0, cyl;
+	uint8_t st0, cyl = 0;
 	error errorcode = ERROR_NONE;
 	for(int i = 0; i < 4; i ++) {
 		if((errorcode = _FDC_Write(_FDC_BASE[drive], DATA, _FDC_SEEK)))
