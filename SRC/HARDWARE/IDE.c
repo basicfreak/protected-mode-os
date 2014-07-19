@@ -1,244 +1,276 @@
-/*
-./DRIVERSRC/HARDWARE/IDE.C
-*/
+/* * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *					HARDWARE/IDE.C					 *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+ /*
+NOTE:
+	I'm very Lazy this time, this is PIO IDE ACCESS
+	ALSO NO PCI SCAN hardwired to 1F0 and 170 BASES
+	ALSO NO IRQ THIS IF FULL POLLING ONLY!
+	NO ATAPI I/O (only HDD [ATA])
+ */
 
 #include "IDE.H"
+#include "TIMER.H"
 #include <STDIO.H>
 
-/**
-LOCAL VARIABLES
-**/
+#define DEBUG
 
-uint16_t _IDE_PRIMARY_PORT_BASE = 0x1F0;
-uint16_t _IDE_SECONDARY_PORT_BASE = 0x170;
-uint16_t _IDE_PRIMARY_PORT_NOINT = 0x3F6;
-uint16_t _IDE_SECONDARY_PORT_NOINT = 0x376;
+/* * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *			   Declare Local Functions				 *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-struct _IDE_device {
-	uint8_t Reserved;
-	uint8_t Channel;
-	uint8_t Drive;
-	uint16_t Type;
-	uint16_t Signiture;
-	uint16_t Capabilities;
-	uint32_t CommandSets;
-	uint32_t Size;
-	uint8_t Model[41];
-} _IDE_devices[4];
+void _IDE_Write(uint16_t IDE, uint16_t OFF, uint8_t Data);
+uint8_t _IDE_Read(uint16_t IDE, uint16_t OFF);
+void _IDE_ReadBuffer(uint16_t IDE, void *BUFFER, int COUNT);
+void _IDE_WriteBuffer(uint16_t IDE, void *BUFFER, int COUNT);
+void _Probe_Disks(void);
+error IDE_SectorIO(uint8_t drive, bool write, uint64_t start, uint8_t count, void* Buffer);
 
-struct _IDE_Channels {
-	uint16_t base;
-	uint16_t control;
-	uint16_t busmasteride;
-	uint16_t noINT;
-} channels[2];
-	
-enum _IDE_PORT_OFFSET {
-	_IDE_PORT_DATA = 0x0,
-	_IDE_PORT_FEATURES = 0x1,
-	_IDE_PORT_ERROR = 0x1,
-	_IDE_PORT_SECTCOUNT0 = 0x2,
-	_IDE_PORT_LBA0 = 0x3,
-	_IDE_PORT_LBA1 = 0x4,
-	_IDE_PORT_LBA2 = 0x5,
-	_IDE_PORT_HEAD = 0x6,
-	_IDE_PORT_DRIVE = 0x6,
-	_IDE_PORT_COMMAND = 0x7,
-	_IDE_PORT_STATUS = 0x7,
-	_IDE_PORT_SECTCOUNT1 = 0x8,
-	_IDE_PORT_LBA3 = 0x9,
-	_IDE_PORT_LBA4 = 0xA,
-	_IDE_PORT_LBA5 = 0xB,
-	_IDE_PORT_CONTROL = 0xC,
-	_IDE_PORT_ALTSTATUS = 0xC,
-	_IDE_PORT_DEVADDRESS = 0xD
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *			   	   Local Variables					 *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+#define _IDE_TIMEOUT 25//*~100mS = ~2500mS = ~2.5S
+
+#define DMA_CHANNEL 2
+#define IRQ_NUMBERa 14
+#define IRQ_NUMBERb 15
+
+#define IDE_ATA 0
+#define IDE_ATAPI 1
+#define ATA_MASTER 0
+#define ATA_SLAVE 1
+
+
+uint16_t _IDE_BASE[2] = { 0 };
+
+enum _IDE_PORT_OFFSETS {
+	DATA = 0,
+	ERROR = 1,
+	FEATURES = 1,
+	SECCOUNT0 = 2,
+	LBA0 = 3,
+	LBA1 = 4,
+	LBA2 = 5,
+	HDDSEL = 6,
+	COMMAND = 7,
+	STATUS = 7,
+	SECCOUNT1 = 8,
+	LBA3 = 9,
+	LBA4 = 0xA,
+	LBA5 = 0xB,
+	CTRL = 0xC,
+	ALTSTATUS = 0xC,
+	DEVADDR = 0xD
 };
 
-enum _IDE_STATUS_BYTE {
-	_IDE_STATUS_BSY = 0x80,
-	_IDE_STATUS_RDY = 0x40,
-	_IDE_STATUS_DF = 0x20,
-	_IDE_STATUS_SRV = 0x10,
-	_IDE_STATUS_DRQ = 0x08,
-	_IDE_STATUS_COR = 0x04,
-	_IDE_STATUS_IDX = 0x02,
-	_IDE_STATUS_ERR = 0x01
+enum _STATUS_REGISTER_BREAKDOWN {
+	_SR_ERR = 1,
+	_SR_IDX = 2,
+	_SR_CORR = 4,
+	_SR_DRQ = 8,
+	_SR_DSC = 0x10,
+	_SR_DF = 0x20,
+	_SR_DRDY = 0x40,
+	_SR_BSY = 0x80
 };
 
-enum _IDE_ERROR_BYTE {
-	_IDE_ERROR_BBK = 0x80,
-	_IDE_ERROR_UNC = 0x40,
-	_IDE_ERROR_MC = 0x20,
-	_IDE_ERROR_IDNF = 0x10,
-	_IDE_ERROR_MCR = 0x08,
-	_IDE_ERROR_ABRT = 0x04,
-	_IDE_ERROR_TK0NF = 0x02,
-	_IDE_ERROR_AMNF = 0X01
+enum _IDE_COMMANDS {
+	_CMD_READ_28 = 0x20,
+	_CMD_WRITE_28 = 0x30,
+	_CMD_READ_48 = 0x24,
+	_CMD_WRITE_48 = 0x34,
+	_CMD_FLUSH = 0xE7,
+	_CMD_IDENTIFY = 0xEC,
+	_CMD_PACKETID = 0xA1
 };
 
-enum _IDE_COMMAND_LIST {
-	_IDE_COMMAND_TEST = 0x00,
-	_IDE_COMMAND_SERVICEACTIONIN = 0x01,
-	_IDE_COMMAND_SENSE = 0x03,
-	_IDE_COMMAND_FORMAT = 0x04,
-	_IDE_COMMAND_INQUIRY = 0x12,
-	_IDE_COMMAND_EJECT = 0x1B,	//STOP UNIT
-	_IDE_COMMAND_REMOVAL = 0x1E,
-	_IDE_COMMAND_FORMATCAPACITIES = 0x23,
-	_IDE_COMMAND_CAPACITY = 0x25,
-	_IDE_COMMAND_READ10 = 0x28,
-	_IDE_COMMAND_WRITE10 = 0x2A,
-	_IDE_COMMAND_SEEK10 = 0x2B,
-	_IDE_COMMAND_WRITEANDVARIFY10 = 0x2E,
-	_IDE_COMMAND_VERIFY10 = 0x2F,
-	_IDE_COMMAND_SYNCHRONIZE = 0x35,
-	_IDE_COMMAND_WRITEBUFFER = 0x3B,
-	_IDE_COMMAND_READBUFFER = 0x3C,
-	_IDE_COMMAND_READTOC = 0x43, // PMA / ATIP
-	_IDE_COMMAND_GETCONFIG = 0x46,
-	_IDE_COMMAND_GETSTATUS = 0x4A,
-	_IDE_COMMAND_DISKINFO = 0x51,
-	_IDE_COMMAND_TRACKINFO = 0x52,
-	_IDE_COMMAND_RESERVETRACK = 0x53,
-	_IDE_COMMAND_SENDOPCINFO = 0x54,
-	_IDE_COMMAND_MODESET10 = 0x55,
-	_IDE_COMMAND_REPAIRTRACK = 0x58,
-	_IDE_COMMAND_MODEGET10 = 0x5A,
-	_IDE_COMMAND_CLOSETRACK = 0x5B,
-	_IDE_COMMAND_GETBUFFERCAPACITY = 0x5C,
-	_IDE_COMMAND_SENDCUESHEET = 0x5D,
-	_IDE_COMMAND_REPORTLUNS = 0xA0,
-	_IDE_COMMAND_BLANK = 0xA1,
-	_IDE_COMMAND_SECURITYIN = 0xA2,
-	_IDE_COMMAND_SENDKEY = 0xA3,
-	_IDE_COMMAND_GETKEY = 0xA4,
-	_IDE_COMMAND_UN_LOADMEDIUM = 0xA6,
-	_IDE_COMMAND_SETREADAHEAD = 0xA7,
-	_IDE_COMMAND_READ = 0xA8,
-	_IDE_COMMAND_WRITE = 0xAA,
-	_IDE_COMMAND_GETSN = 0xAB,
-	_IDE_COMMAND_GETPERFORMANCE = 0xAC,
-	_IDE_COMMAND_READDISKSTRUCTURE = 0xAD,
-	_IDE_COMMAND_SECURITYOUT = 0xB5,
-	_IDE_COMMAND_SETSTREAMING = 0xB6,
-	_IDE_COMMAND_READCDMSF = 0xB9,
-	_IDE_COMMAND_SETCDSPEED = 0xBE,
-	_IDE_COMMAND_SENDDISKSTRUCTURE = 0xBF
-};
+struct _IDE_DEVICES_STRUCT {
+	bool Exists;      // 0 (Empty) or 1 (This Drive really exists).
+	uint8_t Channel;     // 0 (Primary Channel) or 1 (Secondary Channel).
+	uint8_t Drive;       // 0 (Master Drive) or 1 (Slave Drive).
+	unsigned short Type;        // 0: ATA, 1:ATAPI.
+	unsigned short Signature;   // Drive Signature
+	unsigned short Capabilities;// Features.
+	unsigned int CommandSets; // Command Sets Supported.
+	unsigned int Secotrs;     // Size in Sectors.
+	uint8_t Model[41];   // Model in string.
+} _IDE_DRIVE[4];
 
-enum _IDE_FEATURE_LIST {
-	_IDE_FEATURE_READPIO = 0x20,
-	_IDE_FEATURE_READPIOEXT = 0x24,
-	_IDE_FEATURE_READDMA = 0xC8,
-	_IDE_FEATURE_READDMAEXT = 0x25,
-	_IDE_FEATURE_WRITEPIO = 0x30,
-	_IDE_FEATURE_WRITEPIOEXT = 0x34,
-	_IDE_FEATURE_WRITEDMA = 0xCA,
-	_IDE_FEATURE_WRITEDMAEXT = 0x35,
-	_IDE_FEATURE_CACHEFLUSH = 0xE7,
-	_IDE_FEATURE_CACHEFLUSHEXT = 0xEA,
-	_IDE_FEATURE_PACKET = 0xA0,
-	_IDE_FEATURE_IDENTIFYPACKET = 0xA1,
-	_IDE_FEATURE_IDENTIFY = 0xEC
-};
+/* * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *			   	   Local Functions					 *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-enum _IDE_IDENTIFY_INFO {
-	_IDE_IDENTIFY_DEVICETYPE = 0x00,
-	_IDE_IDENTIFY_CYLINDERS = 0x02,
-	_IDE_IDENTIFY_HEADS = 0x06,
-	_IDE_IDENTIFY_SECTORS = 0x0C,
-	_IDE_IDENTIFY_SERIAL = 0x14,
-	_IDE_IDENTIFY_MODEL = 0x36,
-	_IDE_IDENTIFY_CAPABILITIES = 0x62,
-	_IDE_IDENTIFY_FIELDVALID = 0x6A,
-	_IDE_IDENTIFY_MAXLBA = 0x78,
-	_IDE_IDENTIFY_COMMANDSETS = 0xA4,
-	_IDE_IDENTIFY_MAXLBAEXT = 0xC8
-};
-
-/**
-LOCAL FUNTIONS
-**/
-void _IDE_writePort(bool secondary, uint8_t reg, uint8_t data);
-uint8_t _IDE_readPort(bool secondary, uint8_t reg);
-bool _IDE_waitBusy(bool secondary, bool errchk);
-
-uint8_t _IDE_readPort(bool secondary, uint8_t reg)
+void _IDE_Write(uint16_t IDE, uint16_t OFF, uint8_t Data)
 {
-	unsigned char result;
-	if (reg > 0x07 && reg < 0x0C)
-		_IDE_writePort(secondary, _IDE_PORT_CONTROL, (uint8_t) (0x80 | channels[secondary].noINT));
-	if (reg < 0x08)
-		result = inb((uint16_t) (channels[secondary].base + reg - 0x00));
-	else if (reg < 0x0C)
-		result = inb((uint16_t) (channels[secondary].base  + reg - 0x06));
-	else if (reg < 0x0E)
-		result = inb((uint16_t) (channels[secondary].control  + reg - 0x0A));
-	else if (reg < 0x16)
-		result = inb((uint16_t) (channels[secondary].busmasteride + reg - 0x0E));
-	if (reg > 0x07 && reg < 0x0C)
-		_IDE_writePort(secondary, _IDE_PORT_CONTROL, (uint8_t) channels[secondary].noINT);
-	return result;
-	/*uint16_t base = _IDE_PRIMARY_PORT_BASE;
-	if (secondary)
-		base = _IDE_SECONDARY_PORT_BASE;
-	return inb (base+port);*/
+#ifdef DEBUG
+	txf(1, "(IDE.C:Line 106) _IDE_Write(0x%x, 0x%x, 0x%x)\n\r", IDE, OFF, Data);
+#endif
+	outb((uint16_t)(IDE+(uint16_t)OFF), Data);
 }
 
-void _IDE_writePort(bool secondary, uint8_t reg, uint8_t data)
+uint8_t _IDE_Read(uint16_t IDE, uint16_t OFF)
 {
-	if (reg > 0x07 && reg < 0x0C)
-		_IDE_writePort(secondary, _IDE_PORT_CONTROL, (uint8_t) (0x80 | channels[secondary].noINT));
-	if (reg < 0x08)
-		outb((uint16_t) (channels[secondary].base  + reg - 0x00), data);
-	else if (reg < 0x0C)
-		outb((uint16_t) (channels[secondary].base  + reg - 0x06), data);
-	else if (reg < 0x0E)
-		outb((uint16_t) (channels[secondary].control  + reg - 0x0A), data);
-	else if (reg < 0x16)
-		outb((uint16_t) (channels[secondary].busmasteride + reg - 0x0E), data);
-	if (reg > 0x07 && reg < 0x0C)
-		_IDE_writePort(secondary, _IDE_PORT_CONTROL, (uint8_t) channels[secondary].noINT);
-	/*uint16_t base = _IDE_PRIMARY_PORT_BASE;
-	if (secondary)
-		base = _IDE_SECONDARY_PORT_BASE;
-	outb (base+port, data);*/
+#ifdef DEBUG
+	txf(1, "(IDE.C:Line 114) _IDE_Read(0x%x, 0x%x) = ", IDE, OFF);
+	uint8_t Data = inb((uint16_t)(IDE+(uint16_t)OFF));
+	txf(1, "0x%x\n\r", Data);
+	return Data;
+#endif
+	return inb((uint16_t)(IDE+(uint16_t)OFF));
 }
 
-bool _IDE_waitBusy(bool secondary, bool errchk) ///int; 0 = all good; 1 = device fault; 2 = error; 3 = drq; 4 = timeout
+void _IDE_ReadBuffer(uint16_t IDE, void *BUFFER, int COUNT) //512Byte * COUNT read to buffer FROM DATA REG
 {
-	for (int i = 0; i < 100; i++); // delay just a moment in case busy has not been set (400ns required)
-	uint32_t timeout = 10000;
-	while ((_IDE_readPort(secondary, _IDE_PORT_STATUS) & _IDE_STATUS_BSY) || timeout == 0)
-		timeout--;
-	if (timeout) {
-		if(!errchk)
-			return 0;
-		uint8_t state = _IDE_readPort(secondary, _IDE_PORT_STATUS);
-		if (state & _IDE_STATUS_ERR)
-			return 2;
-		if (state & _IDE_STATUS_DF)
-			return 1;
-		if (state & _IDE_STATUS_DRQ)
-			return 3;
+	uint16_t *buffer = (uint16_t *) BUFFER;
+	for (int c = 0; c < COUNT; c++) {
+		for(int t = 0; t < 256; t++)
+			buffer[(c*256)+t] = inw(IDE+DATA);
+		timer_wait(2);
 	}
-	return 4;
 }
 
-/**
-PUBLIC FUNCTIONS
-**/
+void _IDE_WriteBuffer(uint16_t IDE, void *BUFFER, int COUNT) //512Byte * COUNT read to buffer FROM DATA REG
+{
+	uint16_t *buffer = (uint16_t *) BUFFER;
+	for (int c = 0; c < COUNT; c++) {
+		for(int t = 0; t < 256; t++)
+			outw(IDE+DATA, buffer[(c*256)+t]);
+		timer_wait(2);
+	}
+}
+
+void _Probe_Disks()
+{
+	uint8_t count = 0;
+	for(uint8_t channel = 0; channel <= 1; channel++)
+		for(uint8_t drive = 0; drive <= 1; drive++) {
+			uint8_t err=0, type=IDE_ATA, status;
+			_IDE_DRIVE[count].Exists = false;
+			_IDE_Write(_IDE_BASE[channel], HDDSEL, (0xA0 | (uint8_t) (drive << 4)));	//Select Drive
+			timer_wait(1);	// wait ~100mS
+			_IDE_Write(_IDE_BASE[channel], COMMAND, _CMD_IDENTIFY);
+			timer_wait(1);
+			status = _IDE_Read(_IDE_BASE[channel], STATUS);
+			if(!status || status == _SR_ERR) // This device does not exist
+				continue; // we are done here lets go to next device
+			while(true) {
+				status = _IDE_Read(_IDE_BASE[channel], STATUS);
+				if(status & _SR_ERR) {
+					err = 1;
+					break;
+				}
+				if(!(status & _SR_BSY) && (status & _SR_DRQ))
+					break;
+			}
+			if(err) {
+				_IDE_Write(_IDE_BASE[channel], HDDSEL, (0xA0 | (uint8_t) (drive << 4)));	//Select Drive
+				timer_wait(1);	// wait ~100mS
+				_IDE_Write(_IDE_BASE[channel], COMMAND, _CMD_PACKETID);
+				timer_wait(1);
+				status = _IDE_Read(_IDE_BASE[channel], STATUS);
+				if(!status || status & _SR_ERR)
+					continue;
+				type = IDE_ATAPI;
+			}
+			uint8_t Buffer[512] = { 0 };
+			_IDE_ReadBuffer(_IDE_BASE[channel], (uint32_t *) &Buffer, 1);
+			_IDE_DRIVE[count].Exists = true;
+			_IDE_DRIVE[count].Type = type;
+			_IDE_DRIVE[count].Channel = channel;
+			_IDE_DRIVE[count].Drive = drive;
+			_IDE_DRIVE[count].Signature = *((unsigned short*)&Buffer[0]);
+			_IDE_DRIVE[count].Capabilities = *((unsigned short*)&Buffer[98]);
+			_IDE_DRIVE[count].CommandSets = *((unsigned int*)&Buffer[164]);
+			if (_IDE_DRIVE[count].CommandSets & (1 << 26))
+				_IDE_DRIVE[count].Secotrs = *((unsigned int*)&Buffer[200]);
+			else
+				_IDE_DRIVE[count].Secotrs = *((unsigned int*)&Buffer[120]);
+
+			for(int k = 0; k < 40; k += 2) {
+				_IDE_DRIVE[count].Model[k] = Buffer[54 + k + 1];
+				_IDE_DRIVE[count].Model[k + 1] = Buffer[54 + k];
+			}
+			_IDE_DRIVE[count].Model[40] = '\0';
+
+			count++;
+		}
+}
+
+error IDE_SectorIO(uint8_t drive, bool write, uint64_t start, uint8_t count, void* Buffer)
+{
+	bool LBA48 = false;
+	if(start+(uint64_t)count > 0xFFFFFFF)
+		LBA48 = true;
+	printf("%s", ((LBA48) ? "-LBA48-" : "-LBA28-"));
+	putch('a');
+	if (!_IDE_DRIVE[drive].Exists || start+(uint64_t)count > _IDE_DRIVE[drive].Secotrs || !count)
+		return ERROR_INPUT;
+	putch('b');
+	_IDE_Write(_IDE_BASE[_IDE_DRIVE[drive].Channel], HDDSEL, (0xE0 | (uint8_t) (_IDE_DRIVE[drive].Drive << 4 | (int)((start >> 24) & 0xF))) );	//Select Drive
+	timer_wait(1);
+	_IDE_Write(_IDE_BASE[_IDE_DRIVE[drive].Channel], FEATURES, 0);
+	if(LBA48) {
+		_IDE_Write(_IDE_BASE[_IDE_DRIVE[drive].Channel], SECCOUNT0, 0);
+		_IDE_Write(_IDE_BASE[_IDE_DRIVE[drive].Channel], LBA0, (uint8_t) ((start >> 24) & 0xFF));
+		_IDE_Write(_IDE_BASE[_IDE_DRIVE[drive].Channel], LBA1, (uint8_t) ((start >> 32) & 0xFF));
+		_IDE_Write(_IDE_BASE[_IDE_DRIVE[drive].Channel], LBA2, (uint8_t) ((start >> 40) & 0xFF));
+	}
+	_IDE_Write(_IDE_BASE[_IDE_DRIVE[drive].Channel], SECCOUNT0, count);
+	_IDE_Write(_IDE_BASE[_IDE_DRIVE[drive].Channel], LBA0, (uint8_t) (start & 0xFF));
+	_IDE_Write(_IDE_BASE[_IDE_DRIVE[drive].Channel], LBA1, (uint8_t) ((start >> 8) & 0xFF));
+	_IDE_Write(_IDE_BASE[_IDE_DRIVE[drive].Channel], LBA2, (uint8_t) ((start >> 16) & 0xFF));
+	_IDE_Write(_IDE_BASE[_IDE_DRIVE[drive].Channel], COMMAND,
+		((LBA48) ? ((write) ? _CMD_WRITE_48 : _CMD_READ_48) : ((write) ? _CMD_WRITE_28 : _CMD_READ_28)));
+	int to = 0;
+	while(!(_IDE_Read(_IDE_BASE[_IDE_DRIVE[drive].Channel], STATUS) & _SR_DRQ)) {
+		timer_wait(1);
+		to++;
+		if(to >= _IDE_TIMEOUT)
+			return ERROR_TIMEOUT;
+	}
+	printf("\n0x%x\n", _IDE_Read(_IDE_BASE[_IDE_DRIVE[drive].Channel], STATUS));
+	putch('c');
+	if(!write)
+		_IDE_ReadBuffer(_IDE_BASE[_IDE_DRIVE[drive].Channel], (uint32_t *) Buffer, count);
+	else {
+		_IDE_WriteBuffer(_IDE_BASE[_IDE_DRIVE[drive].Channel], (uint32_t *) Buffer, count);
+		_IDE_Write(_IDE_BASE[_IDE_DRIVE[drive].Channel], COMMAND, _CMD_FLUSH);
+	}
+	putch('d');
+	return ERROR_NONE;
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *			   	  Public Functions					 *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 void _IDE_init()
 {
-	// Setup Channel Ports For PATA
-	channels[0].base = (uint16_t) ((uint16_t) ((_IDE_PRIMARY_PORT_BASE & 0xFFFFFFFC) + _IDE_PRIMARY_PORT_BASE) * (uint16_t) ((!_IDE_PRIMARY_PORT_BASE)));
-	channels[0].control = (uint16_t) ((uint16_t) ((_IDE_PRIMARY_PORT_NOINT & 0xFFFFFFFC) + _IDE_PRIMARY_PORT_NOINT) * (uint16_t) ((!_IDE_PRIMARY_PORT_NOINT)));
-	channels[0].busmasteride = (uint16_t) ((0 & 0xFFFFFFFC) + 0);
-	channels[1].base = (uint16_t) ((uint16_t) ((_IDE_SECONDARY_PORT_BASE & 0xFFFFFFFC) + _IDE_SECONDARY_PORT_BASE) * (uint16_t) ((!_IDE_SECONDARY_PORT_BASE)));
-	channels[1].control = (uint16_t) ((uint16_t) ((_IDE_SECONDARY_PORT_NOINT & 0xFFFFFFFC) + _IDE_SECONDARY_PORT_NOINT) * (uint16_t) ((!_IDE_SECONDARY_PORT_NOINT)));
-	channels[1].busmasteride = (uint16_t) ((0 & 0xFFFFFFFC) + 8);
-	
-	// Search For Installed Drives
-	
+#ifdef DEBUG
+	txf(1, "_IDE_init()\n\r");
+#endif
+	//I'm Lazy today I'll Search through PCI in next build, just want this working
+	_IDE_BASE[0] = 0x1F0;
+	_IDE_BASE[1] = 0x170;
+
+	_Probe_Disks();
+#ifdef DEBUG
+	printf("Found Disks:\n");
+	for(int x = 0; x < 4; x ++)
+		if(_IDE_DRIVE[x].Exists)
+			printf("%s %s %i MB\t%s\n\t%s\n", ((_IDE_DRIVE[x].Channel) ? "SECONDARY" : "PRIMARY"), ((_IDE_DRIVE[x].Drive) ? "SLAVE" : "MASTER"),
+				(_IDE_DRIVE[x].Secotrs / 2048), ((_IDE_DRIVE[x].Type) ? "ATAPI" : "ATA"), _IDE_DRIVE[x].Model);
+#endif
+}
+
+error _IDE_IO(uint8_t drive, bool write, uint64_t start, uint8_t count, void* Buffer)
+{
+	error ERRORret = ERROR_NONE;
+
+	ERRORret =  IDE_SectorIO(drive, write, start, count, Buffer);
+
+	return ERRORret;
 }

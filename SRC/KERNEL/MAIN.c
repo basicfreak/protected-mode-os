@@ -14,6 +14,7 @@
 #include "../HARDWARE/8042/KEYBOARD.H"
 #include "../HARDWARE/8042/MOUSE.H"
 #include "../HARDWARE/FDC.H"
+#include "../HARDWARE/IDE.H"
 #include "../SYSTEM/MEM/PHYSICAL.H"
 #include "COMMAND.H"
 #include "../SYSTEM/FS/FAT12.H"
@@ -101,7 +102,8 @@ puts("Installing FDC...");
 	_FDC_init();
 puts("Done.\nInstalling FAT12...");
 	fsysFatInitialize ();
-
+puts("Done.\nInstalling IDE...");
+	_IDE_init();
 puts("DONE.\nEnabling User Land...");
 	uint32_t EsP = 0;
 	__asm__ __volatile__ ("mov %%esp, %0":"=g"(EsP));

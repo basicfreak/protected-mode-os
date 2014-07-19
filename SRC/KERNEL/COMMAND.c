@@ -7,6 +7,7 @@
 #include <STRING.H>
 #include <STDIO.H>
 #include "../HARDWARE/FDC.H"
+#include "../HARDWARE/IDE.H"
 #include "../HARDWARE/TIMER.H"
 #include "../SYSTEM/API/THREADMAN.H"
 #include "../SYSTEM/FS/VFS.H"
@@ -19,6 +20,7 @@ extern void enter_usermode(void);
 #define DEBUG
 
 void cmd_read (unsigned int sec, unsigned int num);
+void cmd_readIDE (uint8_t disk, uint64_t sec, uint8_t num);
 void cat(const char* path);
 void help(void);
 void do_CMD(unsigned int args);
@@ -65,6 +67,8 @@ void do_CMD(unsigned int args)
 		_FDC_init();*/
 	if (streql(explode_cmd[0], "cls"))
 		cls();
+	if (streql(explode_cmd[0], "reboot"))
+		outb(0x64, 0xFE);
 	else if (streql(explode_cmd[0], "write"))
 		_FDC_IO(true, (int)textTOhex(explode_cmd[1]), 1, (uint8_t*) DataToWrite);
 	else if (streql(explode_cmd[0], "cat"))
@@ -130,6 +134,8 @@ void do_CMD(unsigned int args)
 	}
 	else if (streql(explode_cmd[0], "read"))
 		cmd_read( textTOhex(explode_cmd[1]), textTOhex(explode_cmd[2]));
+	else if (streql(explode_cmd[0], "readide"))
+		cmd_readIDE( (uint8_t) textTOhex(explode_cmd[1]), (uint64_t) textTOhex(explode_cmd[2]), (uint8_t) textTOhex(explode_cmd[3]));
 	else if (streql(explode_cmd[0], "dir"))
 		dirTest();
 	else if (streql(explode_cmd[0], "user")) {
@@ -195,7 +201,36 @@ void cmd_read (unsigned int sec, unsigned int num)
 		printf("ERROR CODE = 0x%x\n", errorcode);
 
 	//! display sector
-	if (readbuffer!=0) {
+	if (readbuffer && !errorcode) {
+
+		unsigned int i = 0;
+		for ( unsigned int c = 0; c < num; c++ ) {
+			printf ("\n\rSector %i contents:\n\r", (sectornum + (int) (i/0x200)));
+			for (unsigned int j = 0; j < 0x200; j++)
+				printf ("%x ", readbuffer[ i + j ]);
+			i += 0x200;
+		}
+
+		printf ("\n\rDone.\n");
+	}
+	else
+		printf ("\n\r*** Error reading sector from disk\n");
+}
+
+void cmd_readIDE (uint8_t disk, uint64_t sec, uint8_t num)
+{
+#ifdef DEBUG
+	txf(1, "(COMMAND.C:Line 219) cmd_readIDE(0x%x, 0x%x)\n\r", sec, num);
+#endif
+	int sectornum = (int) sec;
+	memset(readbuffer, 0, 0x4000);
+	//! read sector from disk
+	error errorcode;
+	if((errorcode = _IDE_IO(disk, false, sec, num, readbuffer)))
+		printf("ERROR CODE = 0x%x\n", errorcode);
+
+	//! display sector
+	if (readbuffer && !errorcode) {
 
 		unsigned int i = 0;
 		for ( unsigned int c = 0; c < num; c++ ) {

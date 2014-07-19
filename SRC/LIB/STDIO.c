@@ -78,62 +78,9 @@ void printf(const char *message, ...)
 {
 	va_list ap;
 	va_start(ap, message);
-	char *msg = "                                                                                                                               ";
+	char msg[2000];
 	stringf(msg, message, ap);
 	puts(msg);
-	/*size_t i;
-	for (i=0 ; i<strlen(message)-1;i++)
-	{
-		switch (message[i]) {
-			case '%':
-				switch (message[i+1])
-				{
-					/*** characters ***//*
-					case 'c': {
-						char c = va_arg (ap, char);
-						putch(c);
-						i++;
-						break;
-					}
-					/*** integers ***//*
-					case 'd':
-					case 'i':
-					{
-						unsigned int c = va_arg (ap, unsigned int);
-						char s[32]={0};
-						itoa_s (c, 10, s);
-						puts(s);
-						i++;		// go to next character
-						break;
-					}
-					/*** display in hex ***//*
-					case 'X':
-					case 'x':
-					{
-						uint32_t c = va_arg (ap, uint32_t);
-						char s[32]={0};
-						itoa_s (c,16,s);
-						puts(s);
-						i++;		// go to next character
-						break;
-					}
-					/*** strings ***//*
-					case 's':
-					{
-						char *c = va_arg (ap, char*);
-						char s[32]={0};
-						strcpy (s,(const char*)c);						
-						puts(s);
-						i++;		// go to next character
-						break;
-					}
-				}
-				break;
-			default:
-				putch(message[i]);
-				break;
-		}
-	}*/
 	movcur(curX, curY);
 }
 void printfc(unsigned int cSet, const char *message, ...) {

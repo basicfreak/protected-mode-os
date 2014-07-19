@@ -305,7 +305,7 @@ void _RS232_init()
 	//Set Data Rates
 	if(COM1) {
 		COM1_ID = COM_ID(COM1);
-		setBaudRate(COM1, 115200);
+		setBaudRate(COM1, 19200);
 	} else COM1_ID = _ERROR;
 	if(COM2) {
 		COM2_ID = COM_ID(COM2);
