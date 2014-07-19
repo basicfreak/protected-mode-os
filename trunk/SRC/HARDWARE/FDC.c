@@ -386,19 +386,19 @@ error FDC_SectorIO(uint8_t drive, bool write, uint8_t head, uint8_t track, uint8
 		return errorcode;
 	if((errorcode = _FDC_WAIT_IR()))
 		return errorcode;
-printf("FDC IO RESPONSE: ");
+///printf("FDC IO RESPONSE: ");
 	for(int i=0; i<7; i++)
 	{
 		error_data_u8_t errordata = _FDC_Read(_FDC_BASE[drive], DATA);
 		if(errordata >> 8)
 			return (error) (errordata >> 8);
-printf("0x%x ", errordata);
+///printf("0x%x ", errordata);
 		if(!i && (errordata & 0xF8))
 			_FDC_RESET_REQUIRED = true;
 		if((i==1 || i==2) && (errordata & 0xFF))
 			_FDC_RESET_REQUIRED = true;
 	}
-printf("\n");
+///printf("\n");
 	if((errorcode = _FDC_SENSEINT(&st0, &cyl)))
 		return errorcode;
 	if((errorcode = DOR_Handler(drive, false, false)))

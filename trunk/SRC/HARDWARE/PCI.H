@@ -24,7 +24,7 @@
 		uint8_t		LatencyTimer;
 		uint8_t		HeaderType;
 		uint8_t		BIST;				// Built In Self Test
-		uint16_t		HeadID;				// Private ID.
+		uint16_t	HeadID;				// Private ID.
 	}PCIDEV;
 
 	typedef struct _PCI_HEAD_00h {
